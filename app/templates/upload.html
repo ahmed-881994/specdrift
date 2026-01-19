@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpecDrift - API Contract Drift Detector</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- <div class="ad-banner ad-left" aria-label="sponsored">
+        <span class="ad-label">Sponsored</span>
+        <span class="ad-text">Automate drift checks with SpecDrift Pro.</span>
+        <a class="ad-link" href="https://example.com/specdrift-pro" target="_blank" rel="noopener">Learn more</a>
+    </div>
+    <div class="ad-banner ad-right" aria-label="sponsored">
+        <span class="ad-label">Sponsored</span>
+        <span class="ad-text">CI-ready API drift alerts. Try Pro.</span>
+        <a class="ad-link" href="https://example.com/specdrift-pro" target="_blank" rel="noopener">Learn more</a>
+    </div> -->
+    <div class="container">
+        <header>
+            <h1>🔍 SpecDrift</h1>
+            <p class="tagline">API Contract Drift Detector</p>
+        </header>
+
+        <main>
+            <!-- Lightweight ad slot: subtle, non-intrusive -->
+            <!-- <div class="ad-slot" aria-label="sponsored">
+                <span class="ad-label">Sponsored</span>
+                <span class="ad-text">Try SpecDrift Pro for automated CI checks.</span>
+                <a class="ad-link" href="https://example.com/specdrift-pro" target="_blank" rel="noopener">Learn more</a>
+            </div> -->
+
+            <form id="comparisonForm" class="form-container">
+                <fieldset>
+                    <legend>Compare API Specifications</legend>
+
+                    <div class="form-group">
+                        <label for="oldSpecTab">Old Specification</label>
+                        <div class="input-tabs">
+                            <button type="button" class="tab-button active" data-tab="oldPasteTab">Paste</button>
+                            <button type="button" class="tab-button" data-tab="oldFileTab">Upload File</button>
+                        </div>
+
+                        <div class="tab-content" id="oldFileTab" style="display: none;">
+                            <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" 
+                                   class="file-input" />
+                        </div>
+                        <div class="tab-content" id="oldPasteTab">
+                            <textarea id="oldSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newSpecTab">New Specification</label>
+                        <div class="input-tabs">
+                            <button type="button" class="tab-button active" data-tab="newPasteTab">Paste</button>
+                            <button type="button" class="tab-button" data-tab="newFileTab">Upload File</button>
+                        </div>
+
+                        <div class="tab-content" id="newFileTab" style="display: none;">
+                            <input type="file" id="newFileInput" accept=".json,.yaml,.yml" 
+                                   class="file-input" />
+                        </div>
+                        <div class="tab-content" id="newPasteTab">
+                            <textarea id="newSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="cta">Compare Specs</button>
+                        <button type="reset" class="btn btn-secondary">Clear</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <div id="results" class="results-container" style="display: none;">
+                <div id="resultsContent"></div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <p>Comparing specifications...</p>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+        </main>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabName = this.dataset.tab;
+                const tabContent = document.getElementById(tabName);
+                const isOld = tabName.startsWith('old');
+                
+                // Hide all tabs for this group
+                if (isOld) {
+                    document.getElementById('oldFileTab').style.display = 'none';
+                    document.getElementById('oldPasteTab').style.display = 'none';
+                    document.querySelectorAll('.form-group:has(#oldFileTab) .tab-button').forEach(b => 
+                        b.classList.remove('active')
+                    );
+                } else {
+                    document.getElementById('newFileTab').style.display = 'none';
+                    document.getElementById('newPasteTab').style.display = 'none';
+                    document.querySelectorAll('.form-group:has(#newFileTab) .tab-button').forEach(b => 
+                        b.classList.remove('active')
+                    );
+                }
+                
+                // Show selected tab
+                tabContent.style.display = 'block';
+                this.classList.add('active');
+            });
+        });
+
+        // Form submission
+        document.getElementById('comparisonForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+
+            try {
+                let oldContent, newContent;
+
+                // Get old spec
+                const oldFile = document.getElementById('oldFileInput').files[0];
+                const oldPastedText = document.getElementById('oldSpecText').value;
+                if (oldFile) {
+                    oldContent = await oldFile.text();
+                } else if (oldPastedText) {
+                    oldContent = oldPastedText;
+                } else {
+                    throw new Error('Please provide the old specification');
+                }
+
+                // Get new spec
+                const newFile = document.getElementById('newFileInput').files[0];
+                const newPastedText = document.getElementById('newSpecText').value;
+                if (newFile) {
+                    newContent = await newFile.text();
+                } else if (newPastedText) {
+                    newContent = newPastedText;
+                } else {
+                    throw new Error('Please provide the new specification');
+                }
+
+                // Send to API
+                const formData = new FormData();
+                formData.append('old_spec', oldContent);
+                formData.append('new_spec', newContent);
+
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Comparison failed');
+                }
+
+                const result = await response.json();
+                // Redirect to dedicated results page with encoded payload
+                //const encoded = encodeURIComponent(JSON.stringify(result));
+                //window.location.href = `/result?data=${encoded}`;
+                // Store result in session storage instead of query string
+                sessionStorage.setItem('comparisonResult', JSON.stringify(result));
+                window.location.href = '/result';
+
+            } catch (err) {
+                error.textContent = 'Error: ' + err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+    </script>
+</body>
+</html>

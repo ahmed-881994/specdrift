@@ -1,0 +1,42 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.container {
+  max-width: 720px;
+  margin: 4rem auto;
+  padding: 1rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #94a3b8;
+}
+
+.cta {
+  display: inline-block;
+  margin: 2rem 0;
+  padding: 0.8rem 1.5rem;
+  background: #38bdf8;
+  color: #020617;
+  text-decoration: none;
+  font-weight: bold;
+  border-radius: 6px;
+}
+
+section {
+  margin-top: 3rem;
+}
+
+footer {
+  margin-top: 4rem;
+  font-size: 0.9rem;
+  color: #64748b;
+}

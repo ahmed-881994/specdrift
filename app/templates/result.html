@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpecDrift - API Contract Drift Detector</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 SpecDrift</h1>
+            <p class="tagline">API Contract Drift Detector</p>
+        </header>
+
+        <main>
+            <div id="results" class="results-container"></div>
+            <div class="form-actions">
+                <a href="/upload" class="cta">Compare Another Spec</a>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Load and display results from URL
+        //const params = new URLSearchParams(window.location.search);
+        //const resultsJson = params.get('data');
+        const result = JSON.parse(sessionStorage.getItem('comparisonResult'));
+
+        if (result) {
+            displayResults(result);
+            // Clear session storage after displaying
+            sessionStorage.removeItem('comparisonResult');
+        } else {
+            document.getElementById('results').innerHTML = '<p class="error">No results to display. Please run a comparison first.</p>';
+        }
+
+        /*if (resultsJson) {
+            try {
+                const result = JSON.parse(decodeURIComponent(resultsJson));
+                displayResults(result);
+            } catch (e) {
+                document.getElementById('results').innerHTML = '<p class="error">Failed to load results</p>';
+            }
+        } else {
+            document.getElementById('results').innerHTML = '<p class="error">No results to display. Please run a comparison first.</p>';
+        }*/
+
+        function displayResults(result) {
+            const results = document.getElementById('results');
+            const summary = result.summary;
+            const changes = result.changes;
+
+            let html = `
+                <div class="summary">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
+                        <h2 style="margin: 0;">Comparison Results</h2>
+                        <button id="showAll" class="btn btn-secondary" style="display: none; padding: 0.5rem 1rem; font-size: 0.9rem;">Show All</button>
+                    </div>
+                    <div class="summary-grid">
+                        <div class="summary-item breaking" data-filter="breaking" style="cursor: pointer;">
+                            <span class="count">${summary.breaking}</span>
+                            <span class="label">Breaking Changes</span>
+                        </div>
+                        <div class="summary-item potentially-breaking" data-filter="potentially-breaking" style="cursor: pointer;">
+                            <span class="count">${summary.potentially_breaking}</span>
+                            <span class="label">Potentially Breaking</span>
+                        </div>
+                        <div class="summary-item non-breaking" data-filter="non-breaking" style="cursor: pointer;">
+                            <span class="count">${summary.non_breaking}</span>
+                            <span class="label">Non-Breaking Changes</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (changes.length === 0) {
+                html += '<p class="no-changes">✓ No changes detected</p>';
+            } else {
+                html += '<div class="changes-list">';
+
+                // Group by type
+                const breakingChanges = changes.filter(c => c.type === 'breaking');
+                const potentialChanges = changes.filter(c => c.type === 'potentially_breaking');
+                const nonBreakingChanges = changes.filter(c => c.type === 'non_breaking');
+
+                if (breakingChanges.length > 0) {
+                    html += renderChangeGroup('Breaking Changes', breakingChanges, 'breaking');
+                }
+                if (potentialChanges.length > 0) {
+                    html += renderChangeGroup('Potentially Breaking Changes', potentialChanges, 'potentially-breaking');
+                }
+                if (nonBreakingChanges.length > 0) {
+                    html += renderChangeGroup('Non-Breaking Changes', nonBreakingChanges, 'non-breaking');
+                }
+
+                html += '</div>';
+            }
+
+            results.innerHTML = html;
+
+            // Add click handlers for filtering
+            const summaryItems = document.querySelectorAll('.summary-item');
+            const showAllBtn = document.getElementById('showAll');
+
+            summaryItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const filterType = item.getAttribute('data-filter');
+                    filterChanges(filterType);
+
+                    // Update active state
+                    summaryItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+
+                    // Show the "Show All" button
+                    showAllBtn.style.display = 'inline-block';
+                });
+            });
+
+            showAllBtn.addEventListener('click', () => {
+                filterChanges(null);
+                summaryItems.forEach(i => i.classList.remove('active'));
+                showAllBtn.style.display = 'none';
+            });
+        }
+
+        function filterChanges(type) {
+            const changeGroups = document.querySelectorAll('.change-group');
+
+            if (!type) {
+                // Show all
+                changeGroups.forEach(group => group.style.display = 'block');
+            } else {
+                // Filter by type
+                changeGroups.forEach(group => {
+                    if (group.classList.contains(type)) {
+                        group.style.display = 'block';
+                    } else {
+                        group.style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        function renderChangeGroup(title, changes, className) {
+            let html = `<div class="change-group ${className}">`;
+            html += `<h3>${title}</h3>`;
+            html += '<ul>';
+
+            for (const change of changes) {
+                let detail = `<strong>${change.path}</strong>`;
+                if (change.method) detail += ` [${change.method}]`;
+                if (change.field) detail += ` - <code>${change.field}</code>`;
+
+                html += `<li><div class="change-detail">${detail}</div><div class="change-message">${change.message}</div></li>`;
+            }
+
+            html += '</ul></div>';
+            return html;
+        }
+    </script>
+</body>
+
+</html>
