@@ -45,6 +45,11 @@ async def result_page(request: Request):
     """Render the result page."""
     return templates.TemplateResponse("result.html", {"request": request})
 
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_policy(request: Request):
+    """Render the privacy policy page."""
+    return templates.TemplateResponse("privacypolicy.html", {"request": request})
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Serve favicon."""
