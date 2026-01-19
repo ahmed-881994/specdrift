@@ -1,7 +1,7 @@
 """Main FastAPI application."""
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.routes import health, compare
@@ -44,6 +44,23 @@ async def upload(request: Request):
 async def result_page(request: Request):
     """Render the result page."""
     return templates.TemplateResponse("result.html", {"request": request})
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serve favicon."""
+    favicon_path = Path(__file__) / "static" / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    return {"status": "not found"}
+
+
+@app.get("/ads.txt", include_in_schema=False)
+async def adstxt():
+    """Serve ads.txt."""
+    ads_path = Path(__file__) / "static" / "ads.txt"
+    if ads_path.exists():
+        return FileResponse(ads_path)
+    return {"status": "not found"}
 
 
 if __name__ == "__main__":
