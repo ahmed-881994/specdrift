@@ -54,15 +54,6 @@ async def favicon():
     return {"status": "not found"}
 
 
-@app.get("/ads.txt", include_in_schema=False)
-async def adstxt():
-    """Serve ads.txt."""
-    ads_path = Path(__file__) / "static" / "ads.txt"
-    if ads_path.exists():
-        return FileResponse(ads_path)
-    return {"status": "not found"}
-
-
 if __name__ == "__main__":
     import uvicorn
 
