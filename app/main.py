@@ -53,7 +53,7 @@ async def privacy_policy(request: Request):
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Serve favicon."""
-    favicon_path = Path(__file__) / "static" / "favicon.ico"
+    favicon_path = static_dir / "favicon.ico"
     if favicon_path.exists():
         return FileResponse(favicon_path)
     return {"status": "not found"}
