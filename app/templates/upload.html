@@ -1,11 +1,11 @@
 {% extends "layout.html" %}
 
-{% block title %}Compare OpenAPI Specs | SpecDrift{% endblock %}
-{% block meta_description %}Compare OpenAPI / Swagger specs side-by-side to detect breaking API changes with SpecDrift.{% endblock %}
+{% block title %}Compare Swagger / OpenAPI Specs | SpecDrift{% endblock %}
+{% block meta_description %}Compare Swagger / OpenAPI specs to detect breaking API changes with SpecDrift.{% endblock %}
 {% block og_title %}Compare API Specs | SpecDrift{% endblock %}
-{% block og_description %}Upload or paste two OpenAPI specifications and instantly spot breaking differences.{% endblock %}
-{% block twitter_title %}Compare OpenAPI Specs | SpecDrift{% endblock %}
-{% block twitter_description %}Detect API contract drift by comparing two Swagger/OpenAPI files in seconds.{% endblock %}
+{% block og_description %}Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.{% endblock %}
+{% block twitter_title %}Compare Swagger / OpenAPI Specs | SpecDrift{% endblock %}
+{% block twitter_description %}Detect API contract drift by comparing two Swagger / OpenAPI files in seconds.{% endblock %}
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"
@@ -32,7 +32,7 @@
                     <div class="spec-input">
                         <div class="line-numbers" aria-hidden="true"></div>
                         <textarea id="oldSpecText" class="spec-textarea"
-                            placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
+                            placeholder="Paste your Swagger / OpenAPI spec here..." spellcheck="false"></textarea>
                     </div>
                     <div class="input-actions">
                         <button type="button" class="btn btn-tertiary" data-target="oldSpecText">Beautify</button>
@@ -54,7 +54,7 @@
                     <div class="spec-input">
                         <div class="line-numbers" aria-hidden="true"></div>
                         <textarea id="newSpecText" class="spec-textarea"
-                            placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
+                            placeholder="Paste your Swagger / OpenAPI spec here..." spellcheck="false"></textarea>
                     </div>
                     <div class="input-actions">
                         <button type="button" class="btn btn-tertiary" data-target="newSpecText">Beautify</button>
