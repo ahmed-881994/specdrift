@@ -4,22 +4,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Compare Swagger / OpenAPI specs to detect API contract drift and breaking changes before they reach production.">
+  <meta name="description"
+    content="Compare Swagger / OpenAPI specs to detect API contract drift and breaking changes before they reach production.">
   <meta name="robots" content="index, follow">
   <title>Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift</title>
   <meta property="og:type" content="website">
   <meta property="og:title" content="Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift">
-  <meta property="og:description" content="Detect API contract drift, breaking changes, and safe updates by comparing Swagger / OpenAPI specifications.">
+  <meta property="og:description"
+    content="Detect API contract drift, breaking changes, and safe updates by comparing Swagger / OpenAPI specifications.">
   <meta property="og:image" content="/static/favicon.ico">
   <meta property="og:url" content="https://specdrift.com/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift">
-  <meta name="twitter:description" content="Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.">
+  <meta name="twitter:description"
+    content="Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.">
   <meta name="twitter:image" content="/static/favicon.ico">
   <link rel="canonical" href="https://specdrift.com/">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="/static/favicon.ico" sizes="any">
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858220107949234" crossorigin="anonymous"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858220107949234"
+    crossorigin="anonymous"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -60,6 +64,64 @@
         <li><span class="icon">✅</span> Safe change confirmation</li>
         <li><span class="icon">🔒</span> Fast and simple. No signup.</li>
       </ul>
+    </section>
+
+    <section class="faq">
+      <h2>Frequently Asked Questions</h2>
+      <div class="faq-container">
+
+        <div class="faq-item">
+          <h3>What is API contract drift?</h3>
+          <p>API contract drift occurs when an API specification changes in ways that break client expectations. This
+            happens when endpoints are removed, required parameters are added, or response structures change
+            unexpectedly. SpecDrift detects these drifts automatically.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>What's the difference between breaking and non-breaking changes?</h3>
+          <p><strong>Breaking changes</strong> force clients to update their code immediately (e.g., removing an
+            endpoint, adding a required field). <strong>Potentially breaking changes</strong> might cause issues
+            depending on implementation (e.g., changing response status codes). <strong>Non-breaking changes</strong>
+            are safe—like adding optional fields or new endpoints.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>How do I use SpecDrift?</h3>
+          <p>Upload or paste two Swagger / OpenAPI specifications, click "Compare Specs," and SpecDrift instantly shows
+            all changes categorized by risk level.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>What file formats does SpecDrift support?</h3>
+          <p>SpecDrift accepts Swagger 2.0 and OpenAPI 3.0, and compatible formats in JSON or YAML. You can paste specs
+            directly or upload files. You can even compare a Swagger 2.0 specification to an OpenAPI 3.0 specification.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Is my data private and secure?</h3>
+          <p>Yes. SpecDrift processes comparisons on-the-fly without storing your specifications. No signup, no
+            tracking. Your data stays with you.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Why should I use SpecDrift instead of manual review?</h3>
+          <p>Manual review is error-prone and slow, especially with large or complex APIs. SpecDrift automatically flags
+            issues in seconds, catches edge cases</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Can I use SpecDrift in my CI/CD pipeline? <span class="badge-dev">In Development</span></h3>
+          <p>SpecDrift's API endpoint accepts spec comparisons programmatically, making it ideal for automated API
+            validation during deployments.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>What happens when endpoints or fields are removed?</h3>
+          <p>SpecDrift flags removed endpoints and required fields as <strong>breaking changes</strong>. Clients
+            depending on these will fail unless they update.</p>
+        </div>
+
+      </div>
     </section>
 
     <footer>
