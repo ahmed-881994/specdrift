@@ -15,7 +15,7 @@ class DiffService:
 
     @staticmethod
     def compare_specs(
-        old_content: str, new_content: str, old_format: str = "json", new_format: str = "json"
+        old_content: str, new_content: str, old_format: str = "auto", new_format: str = "auto"
     ) -> Dict[str, Any]:
         """
         Compare two API specifications and return diff result.
@@ -23,8 +23,8 @@ class DiffService:
         Args:
             old_content: Content of the original spec
             new_content: Content of the new spec
-            old_format: Format of old spec ("json" or "yaml")
-            new_format: Format of new spec ("json" or "yaml")
+            old_format: Format of old spec ("json", "yaml", or "auto")
+            new_format: Format of new spec ("json", "yaml", or "auto")
             
         Returns:
             Dictionary with summary and list of changes

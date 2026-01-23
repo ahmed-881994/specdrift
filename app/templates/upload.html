@@ -7,6 +7,7 @@
     <title>SpecDrift - API Contract Drift Detector</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="/static/favicon.ico" sizes="any">
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js" integrity="sha256-e8e8fqaW5HhtVcOTk0C8SpY2bMV4wgm92AAe0W8k2T8=" crossorigin="anonymous"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858220107949234" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -38,35 +39,49 @@
                 <fieldset>
                     <legend>Compare API Specifications</legend>
 
-                    <div class="form-group">
-                        <label for="oldSpecTab">Old Specification</label>
-                        <div class="input-tabs">
-                            <button type="button" class="tab-button active" data-tab="oldPasteTab">Paste</button>
-                            <button type="button" class="tab-button" data-tab="oldFileTab">Upload File</button>
+                    <div class="spec-grid">
+                        <div class="form-group">
+                            <label for="oldSpecTab">Old Specification</label>
+                            <div class="input-tabs">
+                                <button type="button" class="tab-button active" data-tab="oldPasteTab">Paste</button>
+                                <button type="button" class="tab-button" data-tab="oldFileTab">Upload File</button>
+                            </div>
+
+                            <div class="tab-content" id="oldFileTab" style="display: none;">
+                                <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" 
+                                       class="file-input" />
+                            </div>
+                            <div class="tab-content" id="oldPasteTab">
+                                <div class="spec-input">
+                                    <div class="line-numbers" aria-hidden="true"></div>
+                                    <textarea id="oldSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
+                                </div>
+                                <div class="input-actions">
+                                    <button type="button" class="btn btn-tertiary" data-target="oldSpecText">Beautify</button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="tab-content" id="oldFileTab" style="display: none;">
-                            <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" 
-                                   class="file-input" />
-                        </div>
-                        <div class="tab-content" id="oldPasteTab">
-                            <textarea id="oldSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..."></textarea>
-                        </div>
-                    </div>
+                        <div class="form-group">
+                            <label for="newSpecTab">New Specification</label>
+                            <div class="input-tabs">
+                                <button type="button" class="tab-button active" data-tab="newPasteTab">Paste</button>
+                                <button type="button" class="tab-button" data-tab="newFileTab">Upload File</button>
+                            </div>
 
-                    <div class="form-group">
-                        <label for="newSpecTab">New Specification</label>
-                        <div class="input-tabs">
-                            <button type="button" class="tab-button active" data-tab="newPasteTab">Paste</button>
-                            <button type="button" class="tab-button" data-tab="newFileTab">Upload File</button>
-                        </div>
-
-                        <div class="tab-content" id="newFileTab" style="display: none;">
-                            <input type="file" id="newFileInput" accept=".json,.yaml,.yml" 
-                                   class="file-input" />
-                        </div>
-                        <div class="tab-content" id="newPasteTab">
-                            <textarea id="newSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..."></textarea>
+                            <div class="tab-content" id="newFileTab" style="display: none;">
+                                <input type="file" id="newFileInput" accept=".json,.yaml,.yml" 
+                                       class="file-input" />
+                            </div>
+                            <div class="tab-content" id="newPasteTab">
+                                <div class="spec-input">
+                                    <div class="line-numbers" aria-hidden="true"></div>
+                                    <textarea id="newSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
+                                </div>
+                                <div class="input-actions">
+                                    <button type="button" class="btn btn-tertiary" data-target="newSpecText">Beautify</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -116,6 +131,78 @@
                 // Show selected tab
                 tabContent.style.display = 'block';
                 this.classList.add('active');
+                syncLineNumbers();
+            });
+        });
+
+        // Line numbers
+        const textareas = [
+            document.getElementById('oldSpecText'),
+            document.getElementById('newSpecText')
+        ];
+
+        function updateLineNumbers(textarea) {
+            const gutter = textarea?.previousElementSibling;
+            if (!gutter) return;
+            const lines = (textarea.value.split(/\n/).length || 1);
+            gutter.innerHTML = '';
+            for (let i = 1; i <= lines; i += 1) {
+                const line = document.createElement('span');
+                line.textContent = i;
+                gutter.appendChild(line);
+            }
+            gutter.scrollTop = textarea.scrollTop;
+        }
+
+        function syncLineNumbers() {
+            textareas.forEach(updateLineNumbers);
+        }
+
+        textareas.forEach(textarea => {
+            if (!textarea) return;
+            textarea.addEventListener('input', () => updateLineNumbers(textarea));
+            textarea.addEventListener('scroll', () => {
+                const gutter = textarea.previousElementSibling;
+                if (gutter) gutter.scrollTop = textarea.scrollTop;
+            });
+        });
+
+        syncLineNumbers();
+
+        // Basic JSON/YAML formatting
+        function formatSpec(textareaId) {
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) return;
+            const raw = textarea.value;
+            if (!raw.trim()) return;
+
+            // Try JSON first
+            try {
+                const parsedJson = JSON.parse(raw);
+                textarea.value = JSON.stringify(parsedJson, null, 2);
+                updateLineNumbers(textarea);
+                return;
+            } catch (err) {
+                // Fall through to YAML
+            }
+
+            // Try YAML if js-yaml is available
+            if (window.jsyaml && typeof window.jsyaml.load === 'function') {
+                try {
+                    const parsedYaml = window.jsyaml.load(raw);
+                    const dumped = window.jsyaml.dump(parsedYaml, { indent: 2, lineWidth: 80 });
+                    textarea.value = dumped;
+                    updateLineNumbers(textarea);
+                } catch (err) {
+                    // No-op if not valid YAML; keep user content untouched
+                }
+            }
+        }
+
+        document.querySelectorAll('.btn-tertiary').forEach(button => {
+            button.addEventListener('click', () => {
+                const target = button.dataset.target;
+                if (target) formatSpec(target);
             });
         });
 
