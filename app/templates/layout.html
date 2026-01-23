@@ -1,1 +1,39 @@
-"""HTML base layout template."""
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="{% block meta_description %}SpecDrift - API Contract Drift Detector{% endblock %}">
+    <title>{% block title %}SpecDrift - API Contract Drift Detector{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/favicon.ico" sizes="any">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858220107949234"
+        crossorigin="anonymous"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" style="text-decoration: none; color: inherit;">
+                <h1>🔍 SpecDrift</h1>
+            </a>
+            <p class="tagline">API Contract Drift Detector</p>
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <footer>
+        Built for developers.
+        <a href="/privacy">Privacy Policy</a>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

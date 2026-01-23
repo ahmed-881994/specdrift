@@ -1,283 +1,252 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Upload page for SpecDrift, an API contract drift detection tool for developers.">
-    <title>SpecDrift - API Contract Drift Detector</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="icon" href="/static/favicon.ico" sizes="any">
-    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js" integrity="sha256-e8e8fqaW5HhtVcOTk0C8SpY2bMV4wgm92AAe0W8k2T8=" crossorigin="anonymous"></script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858220107949234" crossorigin="anonymous"></script>
-</head>
-<body>
-    <!-- <div class="ad-banner ad-left" aria-label="sponsored">
-        <span class="ad-label">Sponsored</span>
-        <span class="ad-text">Automate drift checks with SpecDrift Pro.</span>
-        <a class="ad-link" href="https://example.com/specdrift-pro" target="_blank" rel="noopener">Learn more</a>
-    </div>
-    <div class="ad-banner ad-right" aria-label="sponsored">
-        <span class="ad-label">Sponsored</span>
-        <span class="ad-text">CI-ready API drift alerts. Try Pro.</span>
-        <a class="ad-link" href="https://example.com/specdrift-pro" target="_blank" rel="noopener">Learn more</a>
-    </div> -->
-    <div class="container">
-        <header>
-            <h1>🔍 SpecDrift</h1>
-            <p class="tagline">API Contract Drift Detector</p>
-        </header>
+{% extends "layout.html" %}
 
-        <main>
-            <!-- Lightweight ad slot: subtle, non-intrusive -->
-            <!-- <div class="ad-slot" aria-label="sponsored">
-                <span class="ad-label">Sponsored</span>
-                <span class="ad-text">Try SpecDrift Pro for automated CI checks.</span>
-                <a class="ad-link" href="https://example.com/specdrift-pro" target="_blank" rel="noopener">Learn more</a>
-            </div> -->
+{% block meta_description %}Upload page for SpecDrift, an API contract drift detection tool for developers.{% endblock
+%}
 
-            <form id="comparisonForm" class="form-container">
-                <fieldset>
-                    <legend>Compare API Specifications</legend>
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"
+    integrity="sha256-e8e8fqaW5HhtVcOTk0C8SpY2bMV4wgm92AAe0W8k2T8=" crossorigin="anonymous"></script>
+{% endblock %}
 
-                    <div class="spec-grid">
-                        <div class="form-group">
-                            <label for="oldSpecTab">Old Specification</label>
-                            <div class="input-tabs">
-                                <button type="button" class="tab-button active" data-tab="oldPasteTab">Paste</button>
-                                <button type="button" class="tab-button" data-tab="oldFileTab">Upload File</button>
-                            </div>
+{% block content %}
+<form id="comparisonForm" class="form-container">
+    <fieldset>
+        <legend>Compare API Specifications</legend>
 
-                            <div class="tab-content" id="oldFileTab" style="display: none;">
-                                <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" 
-                                       class="file-input" />
-                            </div>
-                            <div class="tab-content" id="oldPasteTab">
-                                <div class="spec-input">
-                                    <div class="line-numbers" aria-hidden="true"></div>
-                                    <textarea id="oldSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
-                                </div>
-                                <div class="input-actions">
-                                    <button type="button" class="btn btn-tertiary" data-target="oldSpecText">Beautify</button>
-                                </div>
-                            </div>
-                        </div>
+        <div class="spec-grid">
+            <div class="form-group">
+                <label for="oldSpecTab">Old Specification</label>
+                <div class="input-tabs">
+                    <button type="button" class="tab-button active" data-tab="oldPasteTab">Paste</button>
+                    <button type="button" class="tab-button" data-tab="oldFileTab">Upload File</button>
+                </div>
 
-                        <div class="form-group">
-                            <label for="newSpecTab">New Specification</label>
-                            <div class="input-tabs">
-                                <button type="button" class="tab-button active" data-tab="newPasteTab">Paste</button>
-                                <button type="button" class="tab-button" data-tab="newFileTab">Upload File</button>
-                            </div>
-
-                            <div class="tab-content" id="newFileTab" style="display: none;">
-                                <input type="file" id="newFileInput" accept=".json,.yaml,.yml" 
-                                       class="file-input" />
-                            </div>
-                            <div class="tab-content" id="newPasteTab">
-                                <div class="spec-input">
-                                    <div class="line-numbers" aria-hidden="true"></div>
-                                    <textarea id="newSpecText" class="spec-textarea" placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
-                                </div>
-                                <div class="input-actions">
-                                    <button type="button" class="btn btn-tertiary" data-target="newSpecText">Beautify</button>
-                                </div>
-                            </div>
-                        </div>
+                <div class="tab-content" id="oldFileTab" style="display: none;">
+                    <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" class="file-input" />
+                </div>
+                <div class="tab-content" id="oldPasteTab">
+                    <div class="spec-input">
+                        <div class="line-numbers" aria-hidden="true"></div>
+                        <textarea id="oldSpecText" class="spec-textarea"
+                            placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
                     </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="cta">Compare Specs</button>
-                        <button type="reset" class="btn btn-secondary">Clear</button>
+                    <div class="input-actions">
+                        <button type="button" class="btn btn-tertiary" data-target="oldSpecText">Beautify</button>
                     </div>
-                </fieldset>
-            </form>
-
-            <div id="results" class="results-container" style="display: none;">
-                <div id="resultsContent"></div>
+                </div>
             </div>
 
-            <div id="loading" class="loading" style="display: none;">
-                <p>Comparing specifications...</p>
+            <div class="form-group">
+                <label for="newSpecTab">New Specification</label>
+                <div class="input-tabs">
+                    <button type="button" class="tab-button active" data-tab="newPasteTab">Paste</button>
+                    <button type="button" class="tab-button" data-tab="newFileTab">Upload File</button>
+                </div>
+
+                <div class="tab-content" id="newFileTab" style="display: none;">
+                    <input type="file" id="newFileInput" accept=".json,.yaml,.yml" class="file-input" />
+                </div>
+                <div class="tab-content" id="newPasteTab">
+                    <div class="spec-input">
+                        <div class="line-numbers" aria-hidden="true"></div>
+                        <textarea id="newSpecText" class="spec-textarea"
+                            placeholder="Paste your OpenAPI/Swagger spec here..." spellcheck="false"></textarea>
+                    </div>
+                    <div class="input-actions">
+                        <button type="button" class="btn btn-tertiary" data-target="newSpecText">Beautify</button>
+                    </div>
+                </div>
             </div>
+        </div>
 
-            <div id="error" class="error" style="display: none;"></div>
-        </main>
-    </div>
+        <div class="form-actions">
+            <button type="submit" class="cta">Compare Specs</button>
+            <button type="reset" class="btn btn-secondary">Clear</button>
+        </div>
+    </fieldset>
+</form>
 
-    <script>
-        // Tab switching
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const tabName = this.dataset.tab;
-                const tabContent = document.getElementById(tabName);
-                const isOld = tabName.startsWith('old');
-                
-                // Hide all tabs for this group
-                if (isOld) {
-                    document.getElementById('oldFileTab').style.display = 'none';
-                    document.getElementById('oldPasteTab').style.display = 'none';
-                    document.querySelectorAll('.form-group:has(#oldFileTab) .tab-button').forEach(b => 
-                        b.classList.remove('active')
-                    );
-                } else {
-                    document.getElementById('newFileTab').style.display = 'none';
-                    document.getElementById('newPasteTab').style.display = 'none';
-                    document.querySelectorAll('.form-group:has(#newFileTab) .tab-button').forEach(b => 
-                        b.classList.remove('active')
-                    );
-                }
-                
-                // Show selected tab
-                tabContent.style.display = 'block';
-                this.classList.add('active');
-                syncLineNumbers();
-            });
-        });
+<div id="results" class="results-container" style="display: none;">
+    <div id="resultsContent"></div>
+</div>
 
-        // Line numbers
-        const textareas = [
-            document.getElementById('oldSpecText'),
-            document.getElementById('newSpecText')
-        ];
+<div id="loading" class="loading" style="display: none;">
+    <p>Comparing specifications...</p>
+</div>
 
-        function updateLineNumbers(textarea) {
-            const gutter = textarea?.previousElementSibling;
-            if (!gutter) return;
-            const lines = (textarea.value.split(/\n/).length || 1);
-            gutter.innerHTML = '';
-            for (let i = 1; i <= lines; i += 1) {
-                const line = document.createElement('span');
-                line.textContent = i;
-                gutter.appendChild(line);
-            }
-            gutter.scrollTop = textarea.scrollTop;
-        }
+<div id="error" class="error" style="display: none;"></div>
+</main>
+</div>
 
-        function syncLineNumbers() {
-            textareas.forEach(updateLineNumbers);
-        }
-
-        textareas.forEach(textarea => {
-            if (!textarea) return;
-            textarea.addEventListener('input', () => updateLineNumbers(textarea));
-            textarea.addEventListener('scroll', () => {
-                const gutter = textarea.previousElementSibling;
-                if (gutter) gutter.scrollTop = textarea.scrollTop;
-            });
-        });
-
-        syncLineNumbers();
-
-        // Basic JSON/YAML formatting
-        function formatSpec(textareaId) {
-            const textarea = document.getElementById(textareaId);
-            if (!textarea) return;
-            const raw = textarea.value;
-            if (!raw.trim()) return;
-
-            // Try JSON first
-            try {
-                const parsedJson = JSON.parse(raw);
-                textarea.value = JSON.stringify(parsedJson, null, 2);
-                updateLineNumbers(textarea);
-                return;
-            } catch (err) {
-                // Fall through to YAML
-            }
-
-            // Try YAML if js-yaml is available
-            if (window.jsyaml && typeof window.jsyaml.load === 'function') {
-                try {
-                    const parsedYaml = window.jsyaml.load(raw);
-                    const dumped = window.jsyaml.dump(parsedYaml, { indent: 2, lineWidth: 80 });
-                    textarea.value = dumped;
-                    updateLineNumbers(textarea);
-                } catch (err) {
-                    // No-op if not valid YAML; keep user content untouched
-                }
-            }
-        }
-
-        document.querySelectorAll('.btn-tertiary').forEach(button => {
-            button.addEventListener('click', () => {
-                const target = button.dataset.target;
-                if (target) formatSpec(target);
-            });
-        });
-
-        // Form submission
-        document.getElementById('comparisonForm').addEventListener('submit', async function(e) {
+<script>
+    // Tab switching
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function (e) {
             e.preventDefault();
+            const tabName = this.dataset.tab;
+            const tabContent = document.getElementById(tabName);
+            const isOld = tabName.startsWith('old');
 
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
-            const results = document.getElementById('results');
-
-            loading.style.display = 'block';
-            error.style.display = 'none';
-            results.style.display = 'none';
-
-            try {
-                let oldContent, newContent;
-
-                // Get old spec
-                const oldFile = document.getElementById('oldFileInput').files[0];
-                const oldPastedText = document.getElementById('oldSpecText').value;
-                if (oldFile) {
-                    oldContent = await oldFile.text();
-                } else if (oldPastedText) {
-                    oldContent = oldPastedText;
-                } else {
-                    throw new Error('Please provide the old specification');
-                }
-
-                // Get new spec
-                const newFile = document.getElementById('newFileInput').files[0];
-                const newPastedText = document.getElementById('newSpecText').value;
-                if (newFile) {
-                    newContent = await newFile.text();
-                } else if (newPastedText) {
-                    newContent = newPastedText;
-                } else {
-                    throw new Error('Please provide the new specification');
-                }
-
-                // Send to API
-                const formData = new FormData();
-                formData.append('old_spec', oldContent);
-                formData.append('new_spec', newContent);
-
-                const response = await fetch('/api/compare', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Comparison failed');
-                }
-
-                const result = await response.json();
-                // Redirect to dedicated results page with encoded payload
-                //const encoded = encodeURIComponent(JSON.stringify(result));
-                //window.location.href = `/result?data=${encoded}`;
-                // Store result in session storage instead of query string
-                sessionStorage.setItem('comparisonResult', JSON.stringify(result));
-                window.location.href = '/result';
-
-            } catch (err) {
-                error.textContent = 'Error: ' + err.message;
-                error.style.display = 'block';
-            } finally {
-                loading.style.display = 'none';
+            // Hide all tabs for this group
+            if (isOld) {
+                document.getElementById('oldFileTab').style.display = 'none';
+                document.getElementById('oldPasteTab').style.display = 'none';
+                document.querySelectorAll('.form-group:has(#oldFileTab) .tab-button').forEach(b =>
+                    b.classList.remove('active')
+                );
+            } else {
+                document.getElementById('newFileTab').style.display = 'none';
+                document.getElementById('newPasteTab').style.display = 'none';
+                document.querySelectorAll('.form-group:has(#newFileTab) .tab-button').forEach(b =>
+                    b.classList.remove('active')
+                );
             }
-        });
 
-    </script>
-    <footer>
-      Built for developers.
-      <a href="/privacy">Privacy Policy</a>
-    </footer>
-</body>
-</html>
+            // Show selected tab
+            tabContent.style.display = 'block';
+            this.classList.add('active');
+            syncLineNumbers();
+        });
+    });
+
+    // Line numbers
+    const textareas = [
+        document.getElementById('oldSpecText'),
+        document.getElementById('newSpecText')
+    ];
+
+    function updateLineNumbers(textarea) {
+        const gutter = textarea?.previousElementSibling;
+        if (!gutter) return;
+        const lines = (textarea.value.split(/\n/).length || 1);
+        gutter.innerHTML = '';
+        for (let i = 1; i <= lines; i += 1) {
+            const line = document.createElement('span');
+            line.textContent = i;
+            gutter.appendChild(line);
+        }
+        gutter.scrollTop = textarea.scrollTop;
+    }
+
+    function syncLineNumbers() {
+        textareas.forEach(updateLineNumbers);
+    }
+
+    textareas.forEach(textarea => {
+        if (!textarea) return;
+        textarea.addEventListener('input', () => updateLineNumbers(textarea));
+        textarea.addEventListener('scroll', () => {
+            const gutter = textarea.previousElementSibling;
+            if (gutter) gutter.scrollTop = textarea.scrollTop;
+        });
+    });
+
+    syncLineNumbers();
+
+    // Basic JSON/YAML formatting
+    function formatSpec(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        const raw = textarea.value;
+        if (!raw.trim()) return;
+
+        // Try JSON first
+        try {
+            const parsedJson = JSON.parse(raw);
+            textarea.value = JSON.stringify(parsedJson, null, 2);
+            updateLineNumbers(textarea);
+            return;
+        } catch (err) {
+            // Fall through to YAML
+        }
+
+        // Try YAML if js-yaml is available
+        if (window.jsyaml && typeof window.jsyaml.load === 'function') {
+            try {
+                const parsedYaml = window.jsyaml.load(raw);
+                const dumped = window.jsyaml.dump(parsedYaml, { indent: 2, lineWidth: 80 });
+                textarea.value = dumped;
+                updateLineNumbers(textarea);
+            } catch (err) {
+                // No-op if not valid YAML; keep user content untouched
+            }
+        }
+    }
+
+    document.querySelectorAll('.btn-tertiary').forEach(button => {
+        button.addEventListener('click', () => {
+            const target = button.dataset.target;
+            if (target) formatSpec(target);
+        });
+    });
+
+    // Form submission
+    document.getElementById('comparisonForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        results.style.display = 'none';
+
+        try {
+            let oldContent, newContent;
+
+            // Get old spec
+            const oldFile = document.getElementById('oldFileInput').files[0];
+            const oldPastedText = document.getElementById('oldSpecText').value;
+            if (oldFile) {
+                oldContent = await oldFile.text();
+            } else if (oldPastedText) {
+                oldContent = oldPastedText;
+            } else {
+                throw new Error('Please provide the old specification');
+            }
+
+            // Get new spec
+            const newFile = document.getElementById('newFileInput').files[0];
+            const newPastedText = document.getElementById('newSpecText').value;
+            if (newFile) {
+                newContent = await newFile.text();
+            } else if (newPastedText) {
+                newContent = newPastedText;
+            } else {
+                throw new Error('Please provide the new specification');
+            }
+
+            // Send to API
+            const formData = new FormData();
+            formData.append('old_spec', oldContent);
+            formData.append('new_spec', newContent);
+
+            const response = await fetch('/api/compare', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Comparison failed');
+            }
+
+            const result = await response.json();
+            // Redirect to dedicated results page with encoded payload
+            //const encoded = encodeURIComponent(JSON.stringify(result));
+            //window.location.href = `/result?data=${encoded}`;
+            // Store result in session storage instead of query string
+            sessionStorage.setItem('comparisonResult', JSON.stringify(result));
+            window.location.href = '/result';
+
+        } catch (err) {
+            error.textContent = 'Error: ' + err.message;
+            error.style.display = 'block';
+        } finally {
+            loading.style.display = 'none';
+        }
+    });
+
+</script>
+{% endblock %}
