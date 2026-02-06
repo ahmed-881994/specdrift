@@ -152,7 +152,7 @@
             // Path and method in separate line if method exists
             if (change.method) {
                 html += '<div class="change-endpoint">';
-                html += `<span class="change-method">${change.method} </span>`;
+                html += `<span class="change-method">${change.method}: </span>`;
                 html += `<span class="change-path"><code>${escapeHtml(change.path)}</code></span>`;
                 html += '</div>';
             } else {
@@ -185,7 +185,7 @@
                 for (const [key, value] of Object.entries(change.details)) {
                     html += `<li class="detail-item">`;
                     html += `<span class="detail-key">${escapeHtml(key)}</span>`;
-                    html += `<span class="detail-separator">:</span>`;
+                    html += `<span class="detail-separator">: </span>`;
                     html += `<span class="detail-value">${escapeHtml(formatValue(value))}</span>`;
                     html += `</li>`;
                 }

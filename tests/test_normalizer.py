@@ -840,3 +840,282 @@ class TestIntegration:
         assert get_op["summary"] == "Get user"
         assert len(get_op["parameters"]) == 1
         assert get_op["parameters"][0]["name"] == "userId"
+
+
+class TestEdgeCases:
+    """Tests for edge cases and error handling."""
+
+    def test_normalize_spec_without_paths(self):
+        """Test normalizing spec without paths."""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+        }
+        
+        result = Normalizer.normalize(spec)
+        
+        assert result["paths"] == {}
+        assert result["servers"] == []
+
+    def test_normalize_swagger2_without_definitions(self):
+        """Test Swagger 2.0 without definitions."""
+        spec = {
+            "swagger": "2.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {}
+        }
+        
+        result = Normalizer.normalize(spec)
+        
+        assert result["components"]["schemas"] == {}
+        assert result["components"]["securitySchemes"] == {}
+
+    def test_extract_parameters_with_cookie(self):
+        """Test extracting cookie parameters."""
+        operation = {
+            "parameters": [
+                {
+                    "name": "session_id",
+                    "in": "cookie",
+                    "required": True,
+                    "schema": {"type": "string"}
+                }
+            ]
+        }
+        
+        result = Normalizer.extract_parameters(operation)
+        
+        assert len(result["cookie"]) == 1
+        assert "session_id" in result["cookie"]
+
+    def test_normalize_operation_without_optional_fields(self):
+        """Test normalizing operation with minimal fields."""
+        operation = {
+            "responses": {"200": {"description": "OK"}}
+        }
+        
+        result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
+        
+        assert result["summary"] == ""
+        assert result["description"] == ""
+        assert result["operationId"] == ""
+        assert result["tags"] == []
+        assert result["deprecated"] == False
+        assert result["security"] == []
+        assert result["parameters"] == []
+
+    def test_normalize_parameter_with_all_constraints(self):
+        """Test normalizing parameter with all constraints."""
+        param = {
+            "name": "age",
+            "in": "query",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120,
+            "default": 18,
+            "format": "int32"
+        }
+        
+        result = Normalizer._normalize_parameter(param, is_openapi3=False)
+        
+        assert result["schema"]["type"] == "integer"
+        assert result["schema"]["minimum"] == 0
+        assert result["schema"]["maximum"] == 120
+        assert result["schema"]["default"] == 18
+        assert result["schema"]["format"] == "int32"
+
+    def test_normalize_parameter_with_pattern(self):
+        """Test normalizing parameter with pattern."""
+        param = {
+            "name": "email",
+            "in": "query",
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$",
+            "minLength": 5,
+            "maxLength": 100
+        }
+        
+        result = Normalizer._normalize_parameter(param, is_openapi3=False)
+        
+        assert result["schema"]["pattern"] == "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$"
+        assert result["schema"]["minLength"] == 5
+        assert result["schema"]["maxLength"] == 100
+
+    def test_normalize_array_parameter_with_constraints(self):
+        """Test normalizing array parameter with constraints."""
+        param = {
+            "name": "ids",
+            "in": "query",
+            "type": "array",
+            "items": {"type": "integer"},
+            "minItems": 1,
+            "maxItems": 10
+        }
+        
+        result = Normalizer._normalize_parameter(param, is_openapi3=False)
+        
+        assert result["schema"]["type"] == "array"
+        assert result["schema"]["minItems"] == 1
+        assert result["schema"]["maxItems"] == 10
+
+    def test_convert_servers_with_multiple_schemes(self):
+        """Test server conversion preserves order."""
+        result = Normalizer._convert_to_servers(
+            "api.example.com",
+            "/v2",
+            ["https", "http", "ws"]
+        )
+        
+        assert len(result) == 3
+        assert result[0]["url"] == "https://api.example.com/v2"
+        assert result[1]["url"] == "http://api.example.com/v2"
+        assert result[2]["url"] == "ws://api.example.com/v2"
+
+    def test_normalize_paths_openapi3_with_path_params(self):
+        """Test OpenAPI 3.x path-level parameters are preserved."""
+        paths = {
+            "/items/{itemId}": {
+                "parameters": [
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"}
+                    }
+                ],
+                "get": {
+                    "summary": "Get item",
+                    "responses": {"200": {"description": "Success"}}
+                }
+            }
+        }
+        
+        result = Normalizer._normalize_paths(paths, is_openapi3=True)
+        
+        # Path parameters should be merged into operation
+        assert len(result["/items/{itemId}"]["get"]["parameters"]) == 1
+        assert result["/items/{itemId}"]["get"]["parameters"][0]["name"] == "itemId"
+
+    def test_swagger2_body_param_with_multiple_consumes(self):
+        """Test Swagger 2.0 body parameter with multiple content types."""
+        operation = {
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "body",
+                    "schema": {"type": "object"}
+                }
+            ],
+            "consumes": ["application/json", "application/xml", "application/x-www-form-urlencoded"],
+            "responses": {}
+        }
+        
+        result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
+        
+        assert len(result["requestBody"]["content"]) == 3
+        assert "application/json" in result["requestBody"]["content"]
+        assert "application/xml" in result["requestBody"]["content"]
+        assert "application/x-www-form-urlencoded" in result["requestBody"]["content"]
+
+    def test_response_without_content_type(self):
+        """Test response without schema (like 204 No Content)."""
+        responses = {
+            "204": {"description": "No Content"},
+            "304": {"description": "Not Modified"}
+        }
+        
+        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
+        
+        assert "204" in result
+        assert "304" in result
+        assert "content" not in result["204"]
+        assert "content" not in result["304"]
+
+    def test_normalize_operation_with_multiple_body_and_query_params(self):
+        """Test operation with both body and query parameters."""
+        operation = {
+            "parameters": [
+                {"name": "force", "in": "query", "type": "boolean"},
+                {"in": "body", "name": "body", "schema": {"type": "object"}}
+            ],
+            "consumes": ["application/json"],
+            "responses": {}
+        }
+        
+        result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
+        
+        # Query parameter should be in parameters
+        assert len(result["parameters"]) == 1
+        assert result["parameters"][0]["name"] == "force"
+        # Body should be in requestBody
+        assert "requestBody" in result
+
+    def test_path_and_operation_params_no_duplicates(self):
+        """Test that path and operation parameters don't create duplicates."""
+        path_params = [
+            {"name": "userId", "in": "path", "schema": {"type": "string"}}
+        ]
+        operation = {
+            "parameters": [
+                {"name": "include", "in": "query", "schema": {"type": "string"}}
+            ],
+            "responses": {}
+        }
+        
+        result = Normalizer._normalize_operation(operation, path_params, is_openapi3=True)
+        
+        assert len(result["parameters"]) == 2
+        # Path params come first
+        assert result["parameters"][0]["name"] == "userId"
+        assert result["parameters"][1]["name"] == "include"
+
+    def test_operation_with_empty_consumes_produces(self):
+        """Test operation without consumes/produces uses defaults."""
+        operation = {
+            "parameters": [
+                {"in": "body", "name": "body", "schema": {"type": "object"}}
+            ],
+            "responses": {
+                "200": {"description": "Success", "schema": {"type": "object"}}
+            }
+        }
+        
+        result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
+        
+        # Should default to application/json
+        assert "application/json" in result["requestBody"]["content"]
+        assert "application/json" in result["responses"]["200"]["content"]
+
+    def test_extract_parameters_with_empty_operation(self):
+        """Test extracting parameters from operation without parameters key."""
+        operation = {"responses": {}}
+        
+        result = Normalizer.extract_parameters(operation)
+        
+        assert result["query"] == {}
+        assert result["path"] == {}
+        assert result["header"] == {}
+        assert result["cookie"] == {}
+
+    def test_normalize_response_with_both_schema_and_headers(self):
+        """Test response with both schema and headers."""
+        responses = {
+            "200": {
+                "description": "Success",
+                "schema": {"type": "array"},
+                "headers": {
+                    "X-Total-Count": {"type": "integer"},
+                    "X-Page-Number": {"type": "integer"}
+                }
+            }
+        }
+        
+        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
+        
+        assert "content" in result["200"]
+        assert "headers" in result["200"]
+        assert len(result["200"]["headers"]) == 2
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

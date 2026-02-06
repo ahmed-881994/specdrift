@@ -1,11 +1,82 @@
 """Unit tests for API diff logic."""
 
 import pytest
-from app.services.diff_service import DiffService
+from app.core.differ import Differ
+from app.models.change import Change, DiffResult
 
 
-class TestDiffService:
-    """Tests for the diff service."""
+class TestDiffer:
+    """Tests for the Differ class."""
+
+    def test_diff_returns_diff_result(self):
+        """Test that diff() returns a DiffResult object."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {},
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {},
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        assert isinstance(result, DiffResult)
+        assert "summary" in result.to_dict()
+        assert "changes" in result.to_dict()
+
+    def test_extract_version_with_title(self):
+        """Test version extraction with title and version."""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "My API", "version": "2.1.0"},
+            "paths": {},
+        }
+
+        version = Differ._extract_version(spec)
+        assert version == "My API v2.1.0"
+
+    def test_extract_version_without_title(self):
+        """Test version extraction with only version."""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"version": "1.5.2"},
+            "paths": {},
+        }
+
+        version = Differ._extract_version(spec)
+        assert version == "v1.5.2"
+
+    def test_extract_version_missing(self):
+        """Test version extraction when version is missing."""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "My API"},
+            "paths": {},
+        }
+
+        version = Differ._extract_version(spec)
+        assert version is None
+
+    def test_create_summary(self):
+        """Test summary creation."""
+        differ = Differ()
+        differ.changes = [
+            Change(category="endpoint", type="breaking", message="", path="/test"),
+            Change(category="endpoint", type="breaking", message="", path="/test"),
+            Change(category="endpoint", type="potentially_breaking", message="", path="/test"),
+            Change(category="endpoint", type="non_breaking", message="", path="/test"),
+        ]
+
+        summary = differ._create_summary()
+
+        assert summary["breaking"] == 2
+        assert summary["potentially_breaking"] == 1
+        assert summary["non_breaking"] == 1
+        assert summary["total"] == 4
 
     def test_detect_removed_endpoint(self):
         """Test detection of removed endpoints."""
@@ -13,37 +84,431 @@ class TestDiffService:
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
             "paths": {
-                "/users": {
-                    "get": {"summary": "Get users", "responses": {"200": {"description": "OK"}}}
-                },
-                "/posts": {
-                    "get": {"summary": "Get posts", "responses": {"200": {"description": "OK"}}}
-                },
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}},
+                "/posts": {"get": {"responses": {"200": {"description": "OK"}}}},
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
             },
         }
 
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        endpoint_changes = [
+            c for c in result.changes
+            if c.category == "endpoint" and c.type == "breaking"
+        ]
+        assert len(endpoint_changes) == 1
+        assert endpoint_changes[0].path == "/posts"
+
+    def test_detect_added_endpoint(self):
+        """Test detection of added endpoints."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}},
+                "/posts": {"get": {"responses": {"200": {"description": "OK"}}}},
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        endpoint_changes = [
+            c for c in result.changes
+            if c.category == "endpoint" and c.type == "non_breaking"
+        ]
+        assert len(endpoint_changes) == 1
+        assert endpoint_changes[0].path == "/posts"
+
+    def test_detect_removed_method(self):
+        """Test detection of removed HTTP methods."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {"responses": {"200": {"description": "OK"}}},
+                    "post": {"responses": {"201": {"description": "Created"}}},
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        method_changes = [
+            c for c in result.changes
+            if c.category == "method" and c.type == "breaking"
+        ]
+        assert len(method_changes) == 1
+        assert method_changes[0].method == "POST"
+
+    def test_detect_added_method(self):
+        """Test detection of added HTTP methods."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
             "paths": {
                 "/users": {
-                    "get": {"summary": "Get users", "responses": {"200": {"description": "OK"}}}
+                    "get": {"responses": {"200": {"description": "OK"}}},
+                    "post": {"responses": {"201": {"description": "Created"}}},
                 }
             },
         }
 
-        result = DiffService.compare_specs(
-            str(old_spec).replace("'", '"'),
-            str(new_spec).replace("'", '"')
-        )
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
 
-        # Find endpoint removed change
-        endpoint_changes = [
-            c for c in result["changes"]
-            if c["category"] == "endpoint" and c["type"] == "breaking"
+        method_changes = [
+            c for c in result.changes
+            if c.category == "method" and c.type == "non_breaking"
         ]
-        assert len(endpoint_changes) > 0
-        assert any("/posts" in c["path"] for c in endpoint_changes)
+        assert len(method_changes) == 1
+        assert method_changes[0].method == "POST"
+
+    def test_detect_removed_parameter(self):
+        """Test detection of removed parameters."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {"name": "id", "in": "query", "schema": {"type": "string"}}
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c for c in result.changes
+            if c.category == "parameter" and c.type == "breaking"
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].field_name == "id"
+        assert param_changes[0].details.get("location") == "query"
+
+    def test_detect_added_required_parameter(self):
+        """Test detection of added required parameters."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "id",
+                                "in": "query",
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c for c in result.changes
+            if c.category == "parameter" and c.type == "breaking"
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].details.get("required") is True
+        assert param_changes[0].details.get("location") == "query"
+
+    def test_detect_added_optional_parameter(self):
+        """Test detection of added optional parameters."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {"name": "limit", "in": "query", "schema": {"type": "integer"}}
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c for c in result.changes
+            if c.category == "parameter" and c.type == "non_breaking"
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].details.get("required") is False
+
+    def test_detect_parameter_type_change(self):
+        """Test detection of parameter type changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {"name": "id", "in": "query", "schema": {"type": "string"}}
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {"name": "id", "in": "query", "schema": {"type": "integer"}}
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c for c in result.changes
+            if c.category == "parameter" and c.type == "breaking"
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].details.get("old_type") == "string"
+        assert param_changes[0].details.get("new_type") == "integer"
+
+    def test_detect_parameter_made_required(self):
+        """Test detection of parameter made required."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {"name": "id", "in": "query", "schema": {"type": "string"}}
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "id",
+                                "in": "query",
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c for c in result.changes
+            if c.category == "parameter" and "required" in c.message.lower()
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].type == "breaking"
+
+    def test_detect_parameter_made_optional(self):
+        """Test detection of parameter made optional."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "id",
+                                "in": "query",
+                                "required": True,
+                                "schema": {"type": "string"},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {"name": "id", "in": "query", "schema": {"type": "string"}}
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c for c in result.changes
+            if c.category == "parameter" and "optional" in c.message.lower()
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].type == "potentially_breaking"
+
+    def test_detect_removed_request_body(self):
+        """Test detection of removed request body."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {"schema": {"type": "object"}}
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"post": {"responses": {"201": {"description": "Created"}}}}
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        body_changes = [
+            c for c in result.changes
+            if c.category == "request_body" and c.type == "breaking"
+        ]
+        assert len(body_changes) == 1
+        assert body_changes[0].details.get("content_type") == "application/json"
+
+    def test_detect_added_required_request_body(self):
+        """Test detection of added required request body."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"post": {"responses": {"201": {"description": "Created"}}}}
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "required": True,
+                            "content": {
+                                "application/json": {"schema": {"type": "object"}}
+                            },
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        body_changes = [
+            c for c in result.changes
+            if c.category == "request_body" and c.type == "breaking"
+        ]
+        assert len(body_changes) == 1
+        assert body_changes[0].details.get("required") is True
 
     def test_detect_added_required_field(self):
         """Test detection of added required fields in request body."""
@@ -58,9 +523,7 @@ class TestDiffService:
                                 "application/json": {
                                     "schema": {
                                         "type": "object",
-                                        "properties": {
-                                            "name": {"type": "string"},
-                                        },
+                                        "properties": {"name": {"type": "string"}},
                                         "required": ["name"],
                                     }
                                 }
@@ -71,7 +534,6 @@ class TestDiffService:
                 }
             },
         }
-
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
@@ -98,82 +560,186 @@ class TestDiffService:
             },
         }
 
-        result = DiffService.compare_specs(
-            str(old_spec).replace("'", '"'),
-            str(new_spec).replace("'", '"')
-        )
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
 
-        # Find breaking schema change
         schema_changes = [
-            c for c in result["changes"]
-            if c["category"] == "schema" and c["type"] == "breaking"
+            c for c in result.changes
+            if c.category == "schema" and c.type == "breaking"
         ]
-        assert len(schema_changes) > 0
+        assert len(schema_changes) == 1
+        assert schema_changes[0].field_name == "email"
+        assert schema_changes[0].details.get("required") is True
+        assert schema_changes[0].details.get("location") == "request_body"
 
-    def test_detect_type_changes(self):
-        """Test detection of parameter type changes."""
+    def test_detect_field_type_change(self):
+        """Test detection of field type changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {"age": {"type": "string"}},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {"age": {"type": "integer"}},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        schema_changes = [
+            c for c in result.changes
+            if c.category == "schema" and c.field_name == "age"
+        ]
+        assert len(schema_changes) == 1
+        assert schema_changes[0].details.get("old_type") == "string"
+        assert schema_changes[0].details.get("new_type") == "integer"
+
+    def test_detect_removed_response(self):
+        """Test detection of removed responses."""
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
             "paths": {
                 "/users": {
                     "get": {
-                        "parameters": [
-                            {
-                                "name": "id",
-                                "in": "query",
-                                "schema": {"type": "string"},
-                            }
-                        ],
-                        "responses": {"200": {"description": "OK"}},
+                        "responses": {
+                            "200": {"description": "OK"},
+                            "404": {"description": "Not Found"},
+                        }
                     }
                 }
             },
         }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
 
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        response_changes = [
+            c for c in result.changes
+            if c.category == "response" and "404" in c.field_name
+        ]
+        assert len(response_changes) == 1
+        assert response_changes[0].type == "potentially_breaking"
+        assert response_changes[0].details.get("status_code") == "404"
+
+    def test_detect_removed_success_response(self):
+        """Test detection of removed success responses."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {"description": "OK"},
+                            "201": {"description": "Created"},
+                        }
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        response_changes = [
+            c for c in result.changes
+            if c.category == "response" and c.type == "breaking"
+        ]
+        assert len(response_changes) == 1
+        assert "201" in response_changes[0].field_name
+
+    def test_detect_added_response(self):
+        """Test detection of added responses."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+        }
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
             "paths": {
                 "/users": {
                     "get": {
-                        "parameters": [
-                            {
-                                "name": "id",
-                                "in": "query",
-                                "schema": {"type": "integer"},
-                            }
-                        ],
-                        "responses": {"200": {"description": "OK"}},
+                        "responses": {
+                            "200": {"description": "OK"},
+                            "404": {"description": "Not Found"},
+                        }
                     }
                 }
             },
         }
 
-        result = DiffService.compare_specs(
-            str(old_spec).replace("'", '"'),
-            str(new_spec).replace("'", '"')
-        )
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
 
-        # Find type change
-        type_changes = [
-            c for c in result["changes"]
-            if c["type"] == "breaking" and "type" in c["message"].lower()
+        response_changes = [
+            c for c in result.changes
+            if c.category == "response" and c.type == "non_breaking"
         ]
-        assert len(type_changes) > 0
+        assert len(response_changes) == 1
+        assert "404" in response_changes[0].field_name
 
-    def test_validate_summary_counts(self):
+    def test_summary_accuracy(self):
         """Test that summary counts are accurate."""
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
             "paths": {
-                "/users": {
-                    "get": {"responses": {"200": {"description": "OK"}}}
-                }
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
             },
         }
-
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
@@ -185,35 +751,77 @@ class TestDiffService:
             },
         }
 
-        result = DiffService.compare_specs(
-            str(old_spec).replace("'", '"'),
-            str(new_spec).replace("'", '"')
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        summary = result.summary
+        total_changes = (
+            summary["breaking"]
+            + summary["potentially_breaking"]
+            + summary["non_breaking"]
         )
+        assert total_changes == len(result.changes)
+        assert summary["non_breaking"] > 0
 
-        summary = result["summary"]
-        assert summary["breaking"] + summary["potentially_breaking"] + summary["non_breaking"] == len(
-            result["changes"]
-        )
-        assert summary["non_breaking"] > 0  # POST method added
-
-    def test_invalid_spec_raises_error(self):
-        """Test that invalid specs raise appropriate errors."""
-        with pytest.raises(ValueError):
-            DiffService.compare_specs("invalid json", "{}")
-
-    def test_missing_required_fields_raises_error(self):
-        """Test that specs missing required fields raise errors."""
-        incomplete_spec = {
-            "swagger": "2.0",
-            "info": {"title": "API", "version": "1.0.0"}
-            # Missing "paths"
+    def test_version_info_in_result(self):
+        """Test that version info is included in result."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "My API", "version": "1.0.0"},
+            "paths": {},
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "My API", "version": "2.0.0"},
+            "paths": {},
         }
 
-        with pytest.raises(ValueError):
-            DiffService.compare_specs(
-                str(incomplete_spec).replace("'", '"'),
-                str(incomplete_spec).replace("'", '"')
-            )
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        assert result.old_version == "My API v1.0.0"
+        assert result.new_version == "My API v2.0.0"
+
+    def test_swagger_2_to_openapi_3_diff(self):
+        """Test diffing between Swagger 2.0 and OpenAPI 3.x specs."""
+        old_spec = {
+            "swagger": "2.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "produces": ["application/json"],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "2.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "content": {
+                                    "application/json": {"schema": {"type": "object"}}
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        # Should successfully compare normalized specs
+        assert isinstance(result, DiffResult)
+        assert result.old_version is not None
+        assert result.new_version is not None
 
 
 if __name__ == "__main__":
