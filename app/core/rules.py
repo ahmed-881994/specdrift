@@ -12,9 +12,14 @@ BREAKING_RULES = {
     "required_parameter_added": "Required request parameter added",
     "parameter_removed": "Parameter removed",
     "parameter_type_changed": "Parameter type changed",
+    "parameter_made_required": "Parameter made required",
     "required_field_added": "Required request body field added",
     "field_removed": "Request/response field removed",
     "field_type_changed": "Field type changed",
+    "field_made_required": "Field made required",
+    "request_body_removed": "Request body removed",
+    "required_request_body_added": "Required request body added",
+    "request_body_made_required": "Request body made required",
     "enum_value_removed": "Enum value removed",
     "success_response_removed": "Success response (2xx) removed",
 }
@@ -24,6 +29,9 @@ POTENTIALLY_BREAKING_RULES = {
     "non_2xx_response_removed": "Non-2xx response removed",
     "enum_value_added": "Enum value added",
     "default_value_removed": "Default value removed",
+    "parameter_made_optional": "Parameter made optional",
+    "field_made_optional": "Field made optional",
+    "request_body_made_optional": "Request body made optional",
 }
 
 # NON-BREAKING CHANGES
@@ -31,8 +39,10 @@ NON_BREAKING_RULES = {
     "endpoint_added": "New endpoint",
     "method_added": "New HTTP method",
     "optional_parameter_added": "New optional parameter",
-    "optional_field_added": "New optional request field",
+    "optional_field_added": "New optional field",
+    "optional_request_body_added": "New optional request body",
     "response_field_added": "New response field",
+    "response_added": "New response status",
     "metadata_changed": "Metadata-only changes",
 }
 

@@ -22,8 +22,10 @@
     <link rel="canonical" href="{{ request.base_url }}">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="/static/favicon.ico" sizes="any">
+    {% if request.url.hostname not in ['localhost', '127.0.0.1'] %}
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858220107949234"
         crossorigin="anonymous"></script>
+    {% endif %}
     {% block structured_data %}{% endblock %}
     {% block extra_head %}{% endblock %}
 </head>

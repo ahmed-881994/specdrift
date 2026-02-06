@@ -7,7 +7,6 @@ Coordinates parsing, normalization, and diffing of specifications.
 from typing import Dict, Any
 from app.core.parser import Parser, ParseError
 from app.core.differ import Differ
-from app.models.change import Change, DiffResult
 
 
 class DiffService:
@@ -27,7 +26,7 @@ class DiffService:
             new_format: Format of new spec ("json", "yaml", or "auto")
             
         Returns:
-            Dictionary with summary and list of changes
+            Dictionary with summary, changes, and version info
             
         Raises:
             ValueError: If specs cannot be parsed
@@ -45,43 +44,12 @@ class DiffService:
 
             # Perform diff
             differ = Differ()
-            changes = differ.diff(old_spec, new_spec)
+            diff_result = differ.diff(old_spec, new_spec)
 
-            # Build result
-            result = DiffService._build_result(changes)
-            return result
+            # Return DiffResult as dictionary
+            return diff_result.to_dict()
 
         except ParseError as e:
             raise ValueError(f"Specification parsing error: {str(e)}")
         except Exception as e:
             raise ValueError(f"Unexpected error during comparison: {str(e)}")
-
-    @staticmethod
-    def _build_result(changes: list[Change]) -> Dict[str, Any]:
-        """
-        Build the final diff result with summary and changes.
-        
-        Args:
-            changes: List of detected changes
-            
-        Returns:
-            Dictionary with summary and changes
-        """
-        summary = {
-            "breaking": 0,
-            "potentially_breaking": 0,
-            "non_breaking": 0,
-        }
-
-        for change in changes:
-            if change.type == "breaking":
-                summary["breaking"] += 1
-            elif change.type == "potentially_breaking":
-                summary["potentially_breaking"] += 1
-            elif change.type == "non_breaking":
-                summary["non_breaking"] += 1
-
-        return {
-            "summary": summary,
-            "changes": [change.to_dict() for change in changes],
-        }

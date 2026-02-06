@@ -5,8 +5,8 @@ Detects breaking, potentially breaking, and non-breaking changes
 between two API specifications.
 """
 
-from typing import Dict, Any, List, Tuple
-from app.models.change import Change
+from typing import Dict, Any, List, Optional
+from app.models.change import Change, DiffResult
 from app.core.classifier import Classifier
 from app.core.normalizer import Normalizer
 
@@ -16,19 +16,25 @@ class Differ:
 
     def __init__(self):
         self.changes: List[Change] = []
+        self.old_version: Optional[str] = None
+        self.new_version: Optional[str] = None
 
-    def diff(self, old_spec: Dict[str, Any], new_spec: Dict[str, Any]) -> List[Change]:
+    def diff(self, old_spec: Dict[str, Any], new_spec: Dict[str, Any]) -> DiffResult:
         """
-        Compare two specifications and return list of changes.
+        Compare two specifications and return diff result.
         
         Args:
             old_spec: The original specification
             new_spec: The new specification
             
         Returns:
-            List of detected changes
+            DiffResult containing changes and metadata
         """
         self.changes = []
+        
+        # Extract version information before normalization
+        self.old_version = self._extract_version(old_spec)
+        self.new_version = self._extract_version(new_spec)
         
         # Normalize both specs
         old_normalized = Normalizer.normalize(old_spec)
@@ -44,7 +50,64 @@ class Differ:
         # Detect method and operation-level changes
         self._diff_operations(old_paths, new_paths)
 
-        return self.changes
+        # Create summary
+        summary = self._create_summary()
+
+        # Return DiffResult
+        return DiffResult(
+            summary=summary,
+            changes=self.changes,
+            old_version=self.old_version,
+            new_version=self.new_version
+        )
+
+    @staticmethod
+    def _extract_version(spec: Dict[str, Any]) -> Optional[str]:
+        """
+        Extract version from specification.
+        
+        Args:
+            spec: The API specification
+            
+        Returns:
+            Version string or None
+        """
+        # Try info.version first (OpenAPI standard location)
+        info = spec.get("info", {})
+        version = info.get("version")
+        
+        if version:
+            # Combine title with version if available
+            title = info.get("title", "")
+            if title:
+                return f"{title} v{version}"
+            return f"v{version}"
+        
+        return None
+
+    def _create_summary(self) -> Dict[str, int]:
+        """
+        Create summary statistics of changes.
+        
+        Returns:
+            Dictionary with counts of each change type
+        """
+        summary = {
+            "breaking": 0,
+            "potentially_breaking": 0,
+            "non_breaking": 0,
+            "total": len(self.changes)
+        }
+        
+        for change in self.changes:
+            if change.type == "breaking":
+                summary["breaking"] += 1
+            elif change.type == "potentially_breaking":
+                summary["potentially_breaking"] += 1
+            elif change.type == "non_breaking":
+                summary["non_breaking"] += 1
+        
+        return summary
 
     def _diff_endpoints(
         self, old_paths: Dict[str, Any], new_paths: Dict[str, Any]
@@ -72,21 +135,9 @@ class Differ:
             old_path_item = old_paths[path]
             new_path_item = new_paths[path]
 
-            # Get all methods
-            old_methods = {
-                k: v
-                for k, v in old_path_item.items()
-                if isinstance(v, dict) and k.lower() in (
-                    "get", "post", "put", "delete", "patch", "options", "head"
-                )
-            }
-            new_methods = {
-                k: v
-                for k, v in new_path_item.items()
-                if isinstance(v, dict) and k.lower() in (
-                    "get", "post", "put", "delete", "patch", "options", "head"
-                )
-            }
+            # Get all methods (already filtered by normalizer)
+            old_methods = old_path_item
+            new_methods = new_path_item
 
             # Removed methods
             for method in old_methods:
@@ -113,14 +164,11 @@ class Differ:
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
     ) -> None:
         """Detect changes within a single operation."""
-        is_openapi3 = "parameters" in old_op or "requestBody" in old_op
-
         # Diff parameters
-        self._diff_parameters(path, method, old_op, new_op, is_openapi3)
+        self._diff_parameters(path, method, old_op, new_op)
 
         # Diff request body
-        if is_openapi3:
-            self._diff_request_body(path, method, old_op, new_op)
+        self._diff_request_body(path, method, old_op, new_op)
 
         # Diff responses
         self._diff_responses(path, method, old_op, new_op)
@@ -131,14 +179,14 @@ class Differ:
         method: str,
         old_op: Dict[str, Any],
         new_op: Dict[str, Any],
-        is_openapi3: bool,
     ) -> None:
         """Detect parameter changes."""
-        old_params = Normalizer.extract_parameters(old_op, is_openapi3)
-        new_params = Normalizer.extract_parameters(new_op, is_openapi3)
+        # Operations are already normalized, use extract methods
+        old_params = Normalizer.extract_parameters(old_op)
+        new_params = Normalizer.extract_parameters(new_op)
 
-        # Check each parameter type (query, path, header)
-        for param_in in ("query", "path", "header"):
+        # Check each parameter type (query, path, header, cookie)
+        for param_in in ("query", "path", "header", "cookie"):
             old_in_params = old_params.get(param_in, {})
             new_in_params = new_params.get(param_in, {})
 
@@ -147,7 +195,7 @@ class Differ:
                 if param_name not in new_in_params:
                     self.changes.append(
                         Classifier.classify_parameter_change(
-                            path, method, param_name, "removed"
+                            path, method, param_name, "removed", param_in=param_in
                         )
                     )
 
@@ -157,7 +205,7 @@ class Differ:
                     is_required = new_in_params[param_name].get("required", False)
                     self.changes.append(
                         Classifier.classify_parameter_change(
-                            path, method, param_name, "added", is_required
+                            path, method, param_name, "added", is_required, param_in=param_in
                         )
                     )
 
@@ -167,14 +215,35 @@ class Differ:
                     old_param = old_in_params[param_name]
                     new_param = new_in_params[param_name]
 
-                    # Type comparison (simplified)
-                    old_type = str(old_param.get("schema") or old_param.get("type", ""))
-                    new_type = str(new_param.get("schema") or new_param.get("type", ""))
+                    # Compare schemas (already normalized to use schema wrapper)
+                    old_schema = old_param.get("schema", {})
+                    new_schema = new_param.get("schema", {})
+                    
+                    old_type = old_schema.get("type", "")
+                    new_type = new_schema.get("type", "")
 
                     if old_type != new_type and old_type and new_type:
                         self.changes.append(
                             Classifier.classify_parameter_change(
-                                path, method, param_name, "type_changed"
+                                path, method, param_name, "type_changed",
+                                param_in=param_in, old_type=old_type, new_type=new_type
+                            )
+                        )
+                    
+                    # Check required status change
+                    old_required = old_param.get("required", False)
+                    new_required = new_param.get("required", False)
+                    
+                    if not old_required and new_required:
+                        self.changes.append(
+                            Classifier.classify_parameter_change(
+                                path, method, param_name, "made_required", param_in=param_in
+                            )
+                        )
+                    elif old_required and not new_required:
+                        self.changes.append(
+                            Classifier.classify_parameter_change(
+                                path, method, param_name, "made_optional", param_in=param_in
                             )
                         )
 
@@ -182,21 +251,61 @@ class Differ:
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
     ) -> None:
         """Detect request body schema changes."""
-        old_body = old_op.get("requestBody", {})
-        new_body = new_op.get("requestBody", {})
+        old_body = Normalizer.extract_request_body(old_op)
+        new_body = Normalizer.extract_request_body(new_op)
 
-        if not old_body and not new_body:
+        # Get content types
+        old_content_type = self._get_primary_content_type(old_body)
+        new_content_type = self._get_primary_content_type(new_body)
+        content_type = new_content_type or old_content_type
+
+        # Check if request body was added or removed
+        if old_body and not new_body:
+            self.changes.append(
+                Classifier.classify_request_body_change(
+                    path, method, "removed", content_type=old_content_type
+                )
+            )
+            return
+        
+        if not old_body and new_body:
+            is_required = new_body.get("required", False)
+            self.changes.append(
+                Classifier.classify_request_body_change(
+                    path, method, "added", is_required, content_type=new_content_type
+                )
+            )
             return
 
-        # Extract schemas
+        if not old_body or not new_body:
+            return
+
+        # Extract schemas from content
         old_schema = self._extract_schema_from_request_body(old_body)
         new_schema = self._extract_schema_from_request_body(new_body)
 
         if not old_schema or not new_schema:
             return
 
+        # Check required status change
+        old_required = old_body.get("required", False)
+        new_required = new_body.get("required", False)
+        
+        if not old_required and new_required:
+            self.changes.append(
+                Classifier.classify_request_body_change(
+                    path, method, "made_required", content_type=content_type
+                )
+            )
+        elif old_required and not new_required:
+            self.changes.append(
+                Classifier.classify_request_body_change(
+                    path, method, "made_optional", content_type=content_type
+                )
+            )
+
         # Diff schema properties
-        self._diff_schema(path, method, old_schema, new_schema, "body")
+        self._diff_schema(path, method, old_schema, new_schema, "request_body")
 
     def _diff_schema(
         self,
@@ -204,7 +313,7 @@ class Differ:
         method: str,
         old_schema: Dict[str, Any],
         new_schema: Dict[str, Any],
-        location: str = "body",
+        location: str = "request_body",
     ) -> None:
         """Detect schema property changes."""
         old_props = old_schema.get("properties", {})
@@ -217,7 +326,7 @@ class Differ:
             if prop_name not in new_props:
                 self.changes.append(
                     Classifier.classify_schema_change(
-                        path, method, prop_name, "removed"
+                        path, method, prop_name, "removed", location
                     )
                 )
 
@@ -227,23 +336,53 @@ class Differ:
                 is_required = prop_name in new_required
                 self.changes.append(
                     Classifier.classify_schema_change(
-                        path, method, prop_name, "added", is_required
+                        path, method, prop_name, "added", location, is_required
                     )
                 )
 
         # Changed property types
         for prop_name in old_props:
             if prop_name in new_props:
-                old_prop_type = str(old_props[prop_name].get("type", ""))
-                new_prop_type = str(new_props[prop_name].get("type", ""))
+                old_prop_type = old_props[prop_name].get("type", "")
+                new_prop_type = new_props[prop_name].get("type", "")
 
                 if old_prop_type != new_prop_type and old_prop_type and new_prop_type:
                     self.changes.append(
                         Classifier.classify_schema_change(
-                            path, method, prop_name, "type_changed"
+                            path, method, prop_name, "type_changed", location,
+                            old_type=old_prop_type, new_type=new_prop_type
+                        )
+                    )
+                
+                # Check if property was made required or optional
+                was_required = prop_name in old_required
+                is_required = prop_name in new_required
+                
+                if not was_required and is_required:
+                    self.changes.append(
+                        Classifier.classify_schema_change(
+                            path, method, prop_name, "made_required", location
+                        )
+                    )
+                elif was_required and not is_required:
+                    self.changes.append(
+                        Classifier.classify_schema_change(
+                            path, method, prop_name, "made_optional", location
                         )
                     )
 
+    @staticmethod
+    def _get_primary_content_type(body: Dict[str, Any]) -> str:
+        """Extract primary content type from body."""
+        if not body:
+            return ""
+        content = body.get("content", {})
+        if "application/json" in content:
+            return "application/json"
+        if content:
+            return next(iter(content.keys()))
+        return ""
+    
     def _diff_responses(
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
     ) -> None:
@@ -268,6 +407,22 @@ class Differ:
                         path, method, status_code, "added"
                     )
                 )
+        
+        # Changed responses (schema changes)
+        for status_code in old_responses:
+            if status_code in new_responses:
+                old_response = old_responses[status_code]
+                new_response = new_responses[status_code]
+                
+                # Extract schemas from responses
+                old_schema = self._extract_schema_from_response(old_response)
+                new_schema = self._extract_schema_from_response(new_response)
+                
+                if old_schema and new_schema:
+                    self._diff_schema(
+                        path, method, old_schema, new_schema, 
+                        f"response_{status_code}"
+                    )
 
     @staticmethod
     def _extract_schema_from_request_body(
@@ -278,8 +433,27 @@ class Differ:
             return {}
 
         content = request_body.get("content", {})
-        for content_type, content_spec in content.items():
-            schema = content_spec.get("schema", {})
-            if schema:
-                return schema
+        # Try to get application/json first, then any content type
+        for content_type in ["application/json", *content.keys()]:
+            if content_type in content:
+                schema = content[content_type].get("schema", {})
+                if schema:
+                    return schema
+        return {}
+    
+    @staticmethod
+    def _extract_schema_from_response(
+        response: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Extract schema from response object."""
+        if not response:
+            return {}
+
+        content = response.get("content", {})
+        # Try to get application/json first, then any content type
+        for content_type in ["application/json", *content.keys()]:
+            if content_type in content:
+                schema = content[content_type].get("schema", {})
+                if schema:
+                    return schema
         return {}
