@@ -278,9 +278,6 @@
             }
 
             const result = await response.json();
-            // Redirect to dedicated results page with encoded payload
-            //const encoded = encodeURIComponent(JSON.stringify(result));
-            //window.location.href = `/result?data=${encoded}`;
             // Store result in session storage instead of query string
             sessionStorage.setItem('comparisonResult', JSON.stringify(result));
             window.location.href = '/result';
