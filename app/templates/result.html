@@ -8,6 +8,82 @@
 {% block twitter_description %}See the summary of breaking, potentially breaking, and safe changes between your API specs.{% endblock %}
 
 {% block content %}
+
+<section class="results-guide">
+    <h2>Understanding Your API Comparison Results</h2>
+    <p>
+        SpecDrift provides a comprehensive analysis of changes between your API specifications.
+        Each change is categorized by its impact level to help you make informed decisions about API versioning and deployment.
+    </p>
+
+    <div class="severity-guide">
+        <h3>Change Severity Levels</h3>
+        
+        <div class="severity-item breaking-severity">
+            <h4>🚨 Breaking Changes</h4>
+            <p><strong>Critical - Immediate Action Required</strong></p>
+            <p>These changes will break existing client integrations and require immediate updates from API consumers. Examples include:</p>
+            <ul>
+                <li>Removed endpoints or operations</li>
+                <li>Deleted required request parameters or properties</li>
+                <li>Changed response data types</li>
+                <li>Removed enum values</li>
+                <li>Made optional parameters required</li>
+            </ul>
+            <p><strong>Action:</strong> Communicate these changes to all API consumers before deployment. Consider versioning your API or maintaining backward compatibility.</p>
+        </div>
+
+        <div class="severity-item potentially-severity">
+            <h4>⚠️ Potentially Breaking Changes</h4>
+            <p><strong>High Priority - Review Required</strong></p>
+            <p>These changes may break client implementations depending on how they're written. Examples include:</p>
+            <ul>
+                <li>Modified HTTP status codes</li>
+                <li>Changed parameter or property formats</li>
+                <li>Updated authentication schemes</li>
+                <li>Modified content types</li>
+                <li>Changed validation rules (min/max, patterns)</li>
+            </ul>
+            <p><strong>Action:</strong> Test thoroughly with existing clients. These changes might only affect specific use cases but should be communicated to developers.</p>
+        </div>
+
+        <div class="severity-item non-breaking-severity">
+            <h4>✅ Non-Breaking Changes</h4>
+            <p><strong>Safe - No Breaking Impact</strong></p>
+            <p>These changes enhance your API without breaking existing clients. Examples include:</p>
+            <ul>
+                <li>New endpoints or operations added</li>
+                <li>New optional parameters or properties</li>
+                <li>Additional enum values</li>
+                <li>New response fields</li>
+                <li>Enhanced documentation</li>
+            </ul>
+            <p><strong>Action:</strong> Deploy with confidence. Existing clients will continue to work, and new functionality is available for updated clients.</p>
+        </div>
+    </div>
+
+    <h3>Best Practices for API Evolution</h3>
+    <ul>
+        <li><strong>Version Your API:</strong> Use semantic versioning to communicate the impact of changes (major.minor.patch)</li>
+        <li><strong>Deprecate Gradually:</strong> Mark endpoints as deprecated before removing them, giving clients time to migrate</li>
+        <li><strong>Document Everything:</strong> Clearly document all changes in your API changelog and release notes</li>
+        <li><strong>Test Backwards Compatibility:</strong> Run integration tests with existing client code before releasing</li>
+        <li><strong>Communicate Early:</strong> Inform API consumers about upcoming breaking changes well in advance</li>
+    </ul>
+
+    <h3>What to Do With Your Results</h3>
+    <p>
+        After reviewing your comparison results below, consider these next steps:
+    </p>
+    <ol>
+        <li>Document all breaking changes in your API changelog</li>
+        <li>Notify affected developers and update your API documentation</li>
+        <li>Create migration guides for breaking changes</li>
+        <li>Update your API version number appropriately</li>
+        <li>Run SpecDrift comparisons regularly as part of your CI/CD pipeline</li>
+    </ol>
+</section>
+
 <div id="results" class="results-container"></div>
 <div class="form-actions">
     <a href="/upload" class="cta">Compare Another Spec</a>

@@ -13,6 +13,47 @@
 {% endblock %}
 
 {% block content %}
+
+<section class="instructions-section" style="margin-bottom: 2rem;">
+    <h2>How to Compare API Specifications</h2>
+    <p>
+        SpecDrift helps you identify breaking changes between two versions of your API specification.
+        Upload or paste your Swagger 2.0 or OpenAPI 3.0 specifications (JSON or YAML format) to get started.
+    </p>
+    
+    <div class="info-grid">
+        <div class="info-card">
+            <h3>📤 Step 1: Upload Your Specs</h3>
+            <p>Choose to either upload files or paste your API specifications directly into the text areas below. Supports both JSON and YAML formats.</p>
+        </div>
+        
+        <div class="info-card">
+            <h3>🔍 Step 2: Compare</h3>
+            <p>Click "Compare Specs" and our tool will analyze both specifications, identifying all changes and categorizing them by severity.</p>
+        </div>
+        
+        <div class="info-card">
+            <h3>📊 Step 3: Review Results</h3>
+            <p>See a detailed breakdown of breaking changes, potentially breaking changes, and safe non-breaking changes with clear explanations.</p>
+        </div>
+    </div>
+
+    <h3>What Changes Does SpecDrift Detect?</h3>
+    <ul>
+        <li><strong>Breaking Changes:</strong> Removed endpoints, deleted required parameters, changed response types, removed enum values</li>
+        <li><strong>Potentially Breaking:</strong> Modified status codes, changed parameter formats, updated authentication requirements</li>
+        <li><strong>Non-Breaking Changes:</strong> New endpoints, added optional parameters, expanded enum values, new response properties</li>
+    </ul>
+
+    <h3>Tips for Best Results</h3>
+    <ul>
+        <li>Ensure your specifications are valid Swagger 2.0 or OpenAPI 3.0 documents</li>
+        <li>Use the "Beautify" button to format your specs for easier review</li>
+        <li>Compare sequential versions of your API to track changes over time</li>
+        <li>Review all breaking changes before deploying API updates to production</li>
+    </ul>
+</section>
+
 <form id="comparisonForm" class="form-container">
     <fieldset>
         <legend>Compare API Specifications</legend>
