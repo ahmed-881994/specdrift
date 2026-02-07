@@ -713,7 +713,7 @@ h2 {
   font-size: 1.1rem;
 }
 
-.getting-started a {
+.getting-started a:not(.cta) {
   color: var(--color-primary);
   text-decoration: none;
   border-bottom: 1px solid transparent;
@@ -721,7 +721,7 @@ h2 {
   font-weight: 500;
 }
 
-.getting-started a:hover {
+.getting-started a:not(.cta):hover {
   border-bottom-color: var(--color-primary);
 }
 
