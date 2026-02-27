@@ -1,14 +1,38 @@
 version: "3.9"
 
 services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.email=your-email@example.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    restart: unless-stopped
+
   specdrift:
-      image: ghcr.io/ahmed-881994/specdrift:latest
-      ports:
-          - "8000:8000"
-      restart: unless-stopped
-      healthcheck:
-        test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-        interval: 60s
-        timeout: 10s
-        retries: 3
-        start_period: 30s                 # Let the app boot before first check
+    image: ghcr.io/ahmed-881994/specdrift:latest
+    expose:
+      - "8000"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.specdrift.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.specdrift.entrypoints=websecure"
+      - "traefik.http.routers.specdrift.tls.certresolver=myresolver"
+      - "traefik.http.services.specdrift.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
