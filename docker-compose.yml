@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.specdrift.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.specdrift.rule=Host(`specdrift.dev`)"
       - "traefik.http.routers.specdrift.entrypoints=websecure"
       - "traefik.http.routers.specdrift.tls.certresolver=myresolver"
       - "traefik.http.services.specdrift.loadbalancer.server.port=8000"
