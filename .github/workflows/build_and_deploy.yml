@@ -37,6 +37,10 @@ jobs:
         needs: build
         runs-on: ubuntu-latest
         steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                ref: main
             - name: Docker Stack Deploy
               uses: cssnr/stack-deploy-action@v1
               with:
