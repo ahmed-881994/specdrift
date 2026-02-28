@@ -202,7 +202,6 @@ Tests cover:
 
 - [ ] Support JSON Schema `$ref` resolution
 - [ ] Detailed enum and default value tracking
-- [ ] Batch comparison via CSV
 - [ ] OpenAPI 3.1 full support
 - [ ] Change history/comparison artifacts storage (optional DB)
 - [ ] Integration with CI/CD pipelines (CLI mode)
