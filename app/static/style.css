@@ -878,6 +878,42 @@ header .tagline {
   font-weight: 500;
 }
 
+header .site-nav {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 0.35rem;
+  background: rgba(2, 6, 23, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
+}
+
+header .site-nav a,
+header .site-nav a:visited {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.8rem;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+header .site-nav a:hover,
+header .site-nav a:focus-visible {
+  color: #020617;
+  background: var(--color-primary);
+  text-decoration: none;
+  outline: none;
+}
+
 /* Main content */
 main {
     background: var(--color-surface);
