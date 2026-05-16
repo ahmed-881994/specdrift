@@ -54,8 +54,12 @@ services:
 
   specdrift:
     image: ghcr.io/ahmed-881994/specdrift:latest
+    pull_policy: always
     expose:
       - "8000"
+    environment:
+      SITE_URL: "https://specdrift.dev"
+      ADSENSE_PUBLISHER_ID: "pub-3858220107949234"
     restart: unless-stopped
     labels:
       - "traefik.enable=true"

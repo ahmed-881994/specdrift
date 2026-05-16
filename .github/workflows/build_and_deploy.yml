@@ -47,6 +47,7 @@ jobs:
                 name: specdrift
                 file: docker-compose.yml
                 mode: compose
+                args: --remove-orphans --force-recreate --pull always
                 host: ${{ secrets.SSH_HOST }}
                 user: ${{ secrets.SSH_USER }}
                 ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
