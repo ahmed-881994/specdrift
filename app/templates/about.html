@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}About SpecDrift | OpenAPI Contract Drift Detection{% endblock %}
+{% block meta_description %}Learn what SpecDrift does, how it compares Swagger and OpenAPI specifications, and why it was built for API teams.{% endblock %}
+{% block og_title %}About SpecDrift{% endblock %}
+{% block og_description %}SpecDrift is a focused OpenAPI comparison tool for finding breaking API contract changes.{% endblock %}
+
+{% block content %}
+<section class="content-section">
+    <h2>About SpecDrift</h2>
+    <p>
+        SpecDrift is a focused developer tool for comparing two Swagger or OpenAPI specifications and identifying
+        contract changes that can affect API consumers. It is built for teams that need a fast compatibility check
+        before merging, releasing, or documenting an API change.
+    </p>
+    <p>
+        The comparison engine classifies differences as breaking, potentially breaking, or non-breaking. That makes
+        it easier to decide whether a change needs a migration guide, a new API version, additional client testing,
+        or a simple documentation update.
+    </p>
+
+    <h3>What Makes It Useful</h3>
+    <ul>
+        <li>It understands common Swagger 2.0 and OpenAPI 3.x structures.</li>
+        <li>It checks endpoints, methods, parameters, request bodies, responses, schemas, and enums.</li>
+        <li>It gives plain-language results instead of a raw text diff.</li>
+        <li>It does not require an account or store uploaded specifications.</li>
+    </ul>
+
+    <h3>Project Transparency</h3>
+    <p>
+        SpecDrift is open source. You can review the implementation, report issues, or suggest improvements in the
+        <a href="https://github.com/ahmed-881994/specdrift" target="_blank" rel="noopener">GitHub repository</a>.
+    </p>
+</section>
+{% endblock %}

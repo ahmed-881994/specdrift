@@ -77,6 +77,48 @@ h2 {
   padding: 2rem 1rem;
 }
 
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+}
+
+.site-nav a,
+footer a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+footer a:hover {
+  text-decoration: underline;
+}
+
+.content-section {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 8px;
+}
+
+.content-section h2,
+.content-section h3 {
+  color: var(--color-primary);
+}
+
+.content-section p,
+.content-section li {
+  color: var(--color-text);
+}
+
+.content-section ul {
+  margin: 1rem 0 1.5rem 1.25rem;
+}
+
 .hero {
   text-align: center;
   margin-bottom: 4rem;
