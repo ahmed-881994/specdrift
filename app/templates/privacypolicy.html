@@ -1,109 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Privacy Policy | SpecDrift</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Basic SEO -->
-  <meta name="description" content="Privacy Policy for SpecDrift, an API contract drift detection tool for developers.">
-  <!-- Styles -->
-  <link rel="stylesheet" href="/static/style.css?v=20260516-guides">
-  <link rel="icon" href="/static/favicon.ico" sizes="any">
-  <style>
-    main h1 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      color: var(--color-text);
-    }
-    
-    .updated {
-      color: var(--color-text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 2rem;
-    }
+{% extends "layout.html" %}
 
-    main h2 {
-      font-size: 1.5rem;
-      margin-top: 2.5rem;
-      margin-bottom: 1rem;
-      color: var(--color-primary);
-      border-bottom: 2px solid var(--color-border);
-      padding-bottom: 0.5rem;
-    }
+{% block title %}Privacy Policy | SpecDrift{% endblock %}
+{% block meta_description %}Privacy Policy for SpecDrift, an API contract drift detection tool for developers.{% endblock %}
+{% block og_title %}SpecDrift Privacy Policy{% endblock %}
+{% block og_description %}Learn how SpecDrift handles uploaded API specifications, browser session storage, technical logs, and advertising disclosures.{% endblock %}
 
-    main h3 {
-      font-size: 1.2rem;
-      margin-top: 1.5rem;
-      margin-bottom: 0.75rem;
-      color: var(--color-secondary);
-    }
-
-    main p {
-      margin-bottom: 1rem;
-      line-height: 1.8;
-      color: var(--color-text);
-    }
-
-    main ul {
-      margin-left: 2rem;
-      margin-bottom: 1rem;
-      line-height: 1.8;
-    }
-
-    main ul li {
-      margin-bottom: 0.5rem;
-      color: var(--color-text);
-    }
-
-    main a {
-      color: var(--color-primary);
-      text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.2s ease;
-    }
-
-    main a:hover {
-      border-bottom-color: var(--color-primary);
-    }
-
-    main footer {
-      margin-top: 3rem;
-      padding: 2rem;
-      background: rgba(30, 41, 59, 0.5);
-      border-radius: 8px;
-      border: 1px solid rgba(148, 163, 184, 0.1);
-    }
-
-    main footer p {
-      margin: 0;
-      text-align: center;
-    }
-
-    main footer strong {
-      color: var(--color-primary);
-      font-size: 1.1rem;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="container">
-    <header>
-      <a href="/" style="text-decoration: none; color: inherit;">
-        <h1>🔍 SpecDrift</h1>
-      </a>
-      <p class="tagline">API Contract Drift Detector</p>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="/">Home</a>
-        <a href="/upload">Compare</a>
-        <a href="/guides">Guides</a>
-        <a href="/about">About</a>
-        <a href="/privacy">Privacy</a>
-        <a href="/contact">Contact</a>
-      </nav>
-    </header>
-
-    <main>
+{% block content %}
+  <section class="content-section policy-section">
       <h1>Privacy Policy</h1>
       <p class="updated">Last updated: January 2026</p>
 
@@ -266,19 +169,12 @@
       exactly how your data is processed by examining the code yourself.
     </p>
 
-    <footer>
+    <div class="policy-summary">
       <p>
         <strong>Plain-English Summary:</strong><br>
         No accounts. No stored API specs. No selling data. No creepy tracking.
         Just a tool that does one job well.
       </p>
-    </footer>
-  </main>
-  </div>
-
-  <footer>
-    Built for developers.
-    <a href="/">Home</a> | <a href="/upload">Compare APIs</a> | <a href="/guides">Guides</a> | <a href="/about">About</a> | <a href="/terms">Terms</a> | <a href="/contact">Contact</a>
-  </footer>
-</body>
-</html>
+    </div>
+  </section>
+{% endblock %}

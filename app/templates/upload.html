@@ -1,11 +1,30 @@
 {% extends "layout.html" %}
 
-{% block title %}Compare Swagger / OpenAPI Specs | SpecDrift{% endblock %}
-{% block meta_description %}Compare Swagger / OpenAPI specs to detect breaking API changes with SpecDrift.{% endblock %}
-{% block og_title %}Compare API Specs | SpecDrift{% endblock %}
+{% block title %}Compare Swagger and OpenAPI Specs for Breaking Changes{% endblock %}
+{% block meta_description %}Upload or paste two Swagger or OpenAPI specs to detect breaking API changes, risky schema updates, and safe contract differences.{% endblock %}
+{% block og_title %}Compare Swagger and OpenAPI Specs{% endblock %}
 {% block og_description %}Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.{% endblock %}
-{% block twitter_title %}Compare Swagger / OpenAPI Specs | SpecDrift{% endblock %}
+{% block twitter_title %}Compare Swagger and OpenAPI Specs{% endblock %}
 {% block twitter_description %}Detect API contract drift by comparing two Swagger / OpenAPI files in seconds.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SpecDrift OpenAPI Comparison Tool",
+  "url": "{{ site_url }}/upload",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "description": "Compare Swagger and OpenAPI specs to detect breaking API changes, risky schema updates, and safe contract differences.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
+{% endblock %}
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"
@@ -14,8 +33,8 @@
 
 {% block content %}
 
-<section class="instructions-section" style="margin-bottom: 2rem;">
-    <h2>How to Compare API Specifications</h2>
+<section class="instructions-section">
+    <h1>Compare API Specifications</h1>
     <p>
         SpecDrift helps you identify breaking changes between two versions of your API specification.
         Upload or paste your Swagger 2.0 or OpenAPI 3.0 specifications (JSON or YAML format) to get started.

@@ -1,13 +1,55 @@
 {% extends "layout.html" %}
 
-{% block title %}API Versioning Checklist for OpenAPI Changes | SpecDrift{% endblock %}
+{% block title %}API Versioning Checklist for Breaking OpenAPI Changes{% endblock %}
 {% block meta_description %}A practical API versioning checklist for OpenAPI teams reviewing breaking changes, deprecations, migration plans, and release readiness.{% endblock %}
 {% block og_title %}API Versioning Checklist for OpenAPI Changes{% endblock %}
 {% block og_description %}Use this checklist before shipping API contract changes to production.{% endblock %}
 
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "API Versioning Checklist for Breaking OpenAPI Changes",
+  "description": "A practical API versioning checklist for OpenAPI teams reviewing breaking changes, deprecations, migration plans, and release readiness.",
+  "datePublished": "2026-05-16",
+  "dateModified": "2026-05-16",
+  "author": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "mainEntityOfPage": "{{ site_url }}/guides/api-versioning-checklist"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Guides",
+      "item": "{{ site_url }}/guides"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "API Versioning Checklist",
+      "item": "{{ site_url }}/guides/api-versioning-checklist"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <article class="content-section article">
-    <h2>API Versioning Checklist for OpenAPI Changes</h2>
+    <h1>API Versioning Checklist for OpenAPI Changes</h1>
     <p>
         Versioning is not only a URL decision. It is a communication contract with every consumer of your API. Before
         changing a public or shared internal API, review the actual compatibility impact and decide whether the change
@@ -79,5 +121,12 @@
     </ul>
 
     <p><a class="cta" href="/upload">Run an API version comparison</a></p>
+
+    <nav class="related-guides" aria-label="Related guides">
+        <h2>Related Guides</h2>
+        <a href="/guides/openapi-breaking-changes">OpenAPI Breaking Changes</a>
+        <a href="/guides/api-contract-testing-ci">API Contract Testing in CI</a>
+        <a href="/guides/swagger-vs-openapi-compatibility">Swagger vs OpenAPI Compatibility</a>
+    </nav>
 </article>
 {% endblock %}

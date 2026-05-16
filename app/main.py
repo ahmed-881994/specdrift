@@ -30,6 +30,7 @@ from fastapi.templating import Jinja2Templates
 
 template_dir = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(template_dir))
+templates.env.globals["site_url"] = SITE_URL
 
 
 @app.get("/", response_class=HTMLResponse)

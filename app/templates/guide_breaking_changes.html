@@ -1,13 +1,55 @@
 {% extends "layout.html" %}
 
-{% block title %}OpenAPI Breaking Changes: Practical Guide | SpecDrift{% endblock %}
-{% block meta_description %}A practical guide to OpenAPI breaking changes, including endpoints, parameters, schemas, responses, enums, and authentication changes.{% endblock %}
-{% block og_title %}OpenAPI Breaking Changes: Practical Guide{% endblock %}
+{% block title %}OpenAPI Breaking Changes: Examples, Checklist, and Detection Guide{% endblock %}
+{% block meta_description %}Learn which OpenAPI changes break API clients, with examples covering endpoints, parameters, schemas, responses, enums, and authentication.{% endblock %}
+{% block og_title %}OpenAPI Breaking Changes: Examples and Checklist{% endblock %}
 {% block og_description %}Understand which OpenAPI changes can break existing API clients and how to review them safely.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "OpenAPI Breaking Changes: Examples, Checklist, and Detection Guide",
+  "description": "Learn which OpenAPI changes break API clients, with examples covering endpoints, parameters, schemas, responses, enums, and authentication.",
+  "datePublished": "2026-05-16",
+  "dateModified": "2026-05-16",
+  "author": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "mainEntityOfPage": "{{ site_url }}/guides/openapi-breaking-changes"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Guides",
+      "item": "{{ site_url }}/guides"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "OpenAPI Breaking Changes",
+      "item": "{{ site_url }}/guides/openapi-breaking-changes"
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <article class="content-section article">
-    <h2>OpenAPI Breaking Changes: A Practical Guide</h2>
+    <h1>OpenAPI Breaking Changes: A Practical Guide</h1>
     <p>
         A breaking API change is any change that can make an existing client fail without the client changing its code.
         In OpenAPI terms, that usually means a consumer can no longer make the same request, parse the same response, or
@@ -99,5 +141,12 @@
     </ul>
 
     <p><a class="cta" href="/upload">Compare your OpenAPI specs</a></p>
+
+    <nav class="related-guides" aria-label="Related guides">
+        <h2>Related Guides</h2>
+        <a href="/guides/api-versioning-checklist">API Versioning Checklist</a>
+        <a href="/guides/api-contract-testing-ci">API Contract Testing in CI</a>
+        <a href="/guides/swagger-vs-openapi-compatibility">Swagger vs OpenAPI Compatibility</a>
+    </nav>
 </article>
 {% endblock %}

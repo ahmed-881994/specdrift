@@ -112,16 +112,16 @@
 
         let html = `
             <div class="summary">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg);">
-                    <h2 style="margin: 0;">Comparison Results</h2>
-                    <button id="showAll" class="btn btn-secondary" style="display: none; padding: 0.5rem 1rem; font-size: 0.9rem;">Show All</button>
+                <div class="summary-header">
+                    <h2>Comparison Results</h2>
+                    <button id="showAll" class="btn btn-secondary show-all-button">Show All</button>
                 </div>
         `;
 
         // Add version info if available
         if (result.old_version || result.new_version) {
             html += `
-                <div class="version-info" style="margin-bottom: var(--spacing-md); padding: var(--spacing-sm); background: var(--light-gray); border-radius: 4px;">
+                <div class="version-info">
                     <strong>Comparing:</strong> ${result.old_version || 'Unknown'} → ${result.new_version || 'Unknown'}
                 </div>
             `;
@@ -129,15 +129,15 @@
 
         html += `
                 <div class="summary-grid">
-                    <div class="summary-item breaking" data-filter="breaking" style="cursor: pointer;">
+                    <div class="summary-item breaking" data-filter="breaking">
                         <span class="count">${summary.breaking}</span>
                         <span class="label">Breaking Changes</span>
                     </div>
-                    <div class="summary-item potentially-breaking" data-filter="potentially-breaking" style="cursor: pointer;">
+                    <div class="summary-item potentially-breaking" data-filter="potentially-breaking">
                         <span class="count">${summary.potentially_breaking}</span>
                         <span class="label">Potentially Breaking</span>
                     </div>
-                    <div class="summary-item non-breaking" data-filter="non-breaking" style="cursor: pointer;">
+                    <div class="summary-item non-breaking" data-filter="non-breaking">
                         <span class="count">${summary.non_breaking}</span>
                         <span class="label">Non-Breaking Changes</span>
                     </div>

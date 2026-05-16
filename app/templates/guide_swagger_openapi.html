@@ -1,13 +1,55 @@
 {% extends "layout.html" %}
 
-{% block title %}Swagger 2.0 vs OpenAPI 3.x Compatibility Guide | SpecDrift{% endblock %}
+{% block title %}Swagger 2.0 vs OpenAPI 3.x Compatibility Guide{% endblock %}
 {% block meta_description %}Understand practical compatibility differences between Swagger 2.0 and OpenAPI 3.x when comparing API specifications.{% endblock %}
 {% block og_title %}Swagger 2.0 vs OpenAPI 3.x Compatibility Guide{% endblock %}
 {% block og_description %}Learn what changes when comparing Swagger and OpenAPI specs across versions.{% endblock %}
 
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Swagger 2.0 vs OpenAPI 3.x Compatibility Guide",
+  "description": "Understand practical compatibility differences between Swagger 2.0 and OpenAPI 3.x when comparing API specifications.",
+  "datePublished": "2026-05-16",
+  "dateModified": "2026-05-16",
+  "author": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "mainEntityOfPage": "{{ site_url }}/guides/swagger-vs-openapi-compatibility"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Guides",
+      "item": "{{ site_url }}/guides"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Swagger vs OpenAPI Compatibility",
+      "item": "{{ site_url }}/guides/swagger-vs-openapi-compatibility"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <article class="content-section article">
-    <h2>Swagger 2.0 vs OpenAPI 3.x Compatibility Guide</h2>
+    <h1>Swagger 2.0 vs OpenAPI 3.x Compatibility Guide</h1>
     <p>
         Many teams still use the word Swagger to mean an API specification, but the modern specification is OpenAPI.
         Swagger 2.0 and OpenAPI 3.x describe many of the same ideas, yet they structure requests, responses, security,
@@ -89,5 +131,12 @@
     </ul>
 
     <p><a class="cta" href="/upload">Compare Swagger and OpenAPI specs</a></p>
+
+    <nav class="related-guides" aria-label="Related guides">
+        <h2>Related Guides</h2>
+        <a href="/guides/openapi-breaking-changes">OpenAPI Breaking Changes</a>
+        <a href="/guides/api-versioning-checklist">API Versioning Checklist</a>
+        <a href="/guides/api-contract-testing-ci">API Contract Testing in CI</a>
+    </nav>
 </article>
 {% endblock %}

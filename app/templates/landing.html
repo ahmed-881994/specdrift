@@ -12,37 +12,84 @@
   <meta property="og:title" content="Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift">
   <meta property="og:description"
     content="Detect API contract drift, breaking changes, and safe updates by comparing Swagger / OpenAPI specifications.">
-  <meta property="og:image" content="/static/favicon.ico">
-  <meta property="og:url" content="https://specdrift.com/">
+  <meta property="og:image" content="{{ site_url }}/static/favicon.ico">
+  <meta property="og:url" content="{{ site_url }}/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift">
   <meta name="twitter:description"
     content="Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.">
-  <meta name="twitter:image" content="/static/favicon.ico">
-  <link rel="canonical" href="https://specdrift.com/">
+  <meta name="twitter:image" content="{{ site_url }}/static/favicon.ico">
+  <link rel="canonical" href="{{ site_url }}/">
   <link rel="stylesheet" href="/static/style.css?v=20260516-guides">
   <link rel="icon" href="/static/favicon.ico" sizes="any">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "SpecDrift",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Any",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "description": "SpecDrift detects API contract drift by comparing Swagger / OpenAPI specifications and flagging breaking changes.",
-    "url": "https://specdrift.com/"
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "name": "SpecDrift",
+        "url": "{{ site_url }}/",
+        "description": "SpecDrift compares Swagger and OpenAPI specifications to detect API contract drift and breaking changes."
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "SpecDrift",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "description": "SpecDrift detects API contract drift by comparing Swagger / OpenAPI specifications and flagging breaking changes.",
+        "url": "{{ site_url }}/"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is API contract drift?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "API contract drift occurs when an API specification changes in ways that break client expectations, such as removed endpoints, new required parameters, or changed response structures."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What's the difference between breaking and non-breaking changes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Breaking changes force clients to update their code, potentially breaking changes require review, and non-breaking changes are usually safe for existing consumers."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What file formats does SpecDrift support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "SpecDrift accepts Swagger 2.0 and OpenAPI 3.x specifications in JSON or YAML."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is my data private and secure?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "SpecDrift processes comparisons on the fly without storing uploaded specifications or comparison results."
+            }
+          }
+        ]
+      }
+    ]
   }
   </script>
 </head>
 
 <body>
   <header>
-    <h1>🔍 SpecDrift</h1>
+    <span class="brand-title">🔍 SpecDrift</span>
     <p class="tagline">API Contract Drift Detector</p>
     <nav class="site-nav" aria-label="Primary navigation">
       <a href="/">Home</a>
