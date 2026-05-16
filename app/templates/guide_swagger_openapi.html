@@ -1,0 +1,93 @@
+{% extends "layout.html" %}
+
+{% block title %}Swagger 2.0 vs OpenAPI 3.x Compatibility Guide | SpecDrift{% endblock %}
+{% block meta_description %}Understand practical compatibility differences between Swagger 2.0 and OpenAPI 3.x when comparing API specifications.{% endblock %}
+{% block og_title %}Swagger 2.0 vs OpenAPI 3.x Compatibility Guide{% endblock %}
+{% block og_description %}Learn what changes when comparing Swagger and OpenAPI specs across versions.{% endblock %}
+
+{% block content %}
+<article class="content-section article">
+    <h2>Swagger 2.0 vs OpenAPI 3.x Compatibility Guide</h2>
+    <p>
+        Many teams still use the word Swagger to mean an API specification, but the modern specification is OpenAPI.
+        Swagger 2.0 and OpenAPI 3.x describe many of the same ideas, yet they structure requests, responses, security,
+        and reusable schemas differently. That matters when you compare two versions of an API contract.
+    </p>
+
+    <h3>Key Structural Differences</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Concept</th>
+                <th>Swagger 2.0</th>
+                <th>OpenAPI 3.x</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Version field</td>
+                <td><code>swagger: "2.0"</code></td>
+                <td><code>openapi: "3.0.0"</code> or newer</td>
+            </tr>
+            <tr>
+                <td>Base URL</td>
+                <td><code>host</code>, <code>basePath</code>, <code>schemes</code></td>
+                <td><code>servers</code></td>
+            </tr>
+            <tr>
+                <td>Request bodies</td>
+                <td>Body parameters</td>
+                <td><code>requestBody</code></td>
+            </tr>
+            <tr>
+                <td>Reusable schemas</td>
+                <td><code>definitions</code></td>
+                <td><code>components.schemas</code></td>
+            </tr>
+            <tr>
+                <td>Content types</td>
+                <td><code>consumes</code> and <code>produces</code></td>
+                <td>Media types under request and response content</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Why This Matters for Diffing</h3>
+    <p>
+        A naive text diff can make a migration from Swagger 2.0 to OpenAPI 3.x look like every endpoint changed, even
+        when the public behavior is mostly the same. A useful compatibility review normalizes equivalent concepts before
+        classifying the impact on clients.
+    </p>
+
+    <h3>Request Body Migration</h3>
+    <p>
+        In Swagger 2.0, a JSON body is usually represented as a body parameter. In OpenAPI 3.x, the same idea is moved
+        into <code>requestBody</code> with a media type such as <code>application/json</code>. When reviewing a migration,
+        focus on whether required fields, property types, and accepted content types changed.
+    </p>
+
+    <h3>Response Content Migration</h3>
+    <p>
+        OpenAPI 3.x gives more precise response content modeling. That is helpful, but it can reveal differences that
+        were previously implicit. Check whether status codes, response schemas, and media types remain compatible for
+        existing clients.
+    </p>
+
+    <h3>Security Changes</h3>
+    <p>
+        Security definitions also moved into <code>components.securitySchemes</code>. During a migration, verify that
+        authentication types, header names, OAuth flows, and required scopes still match production behavior.
+    </p>
+
+    <h3>Migration Review Checklist</h3>
+    <ul>
+        <li>Confirm every old path and HTTP method still exists unless intentionally removed.</li>
+        <li>Check request bodies after translating body parameters to <code>requestBody</code>.</li>
+        <li>Compare response schemas by behavior, not only by document location.</li>
+        <li>Verify content types, authentication requirements, and server URLs.</li>
+        <li>Run a contract comparison after conversion and manually review high-risk changes.</li>
+    </ul>
+
+    <p><a class="cta" href="/upload">Compare Swagger and OpenAPI specs</a></p>
+</article>
+{% endblock %}

@@ -72,6 +72,36 @@ async def terms(request: Request):
     return templates.TemplateResponse("terms.html", {"request": request, "enable_ads": False})
 
 
+@app.get("/guides", response_class=HTMLResponse)
+async def guides(request: Request):
+    """Render the guides index."""
+    return templates.TemplateResponse("guides.html", {"request": request, "enable_ads": False})
+
+
+@app.get("/guides/openapi-breaking-changes", response_class=HTMLResponse)
+async def openapi_breaking_changes(request: Request):
+    """Render the OpenAPI breaking changes guide."""
+    return templates.TemplateResponse("guide_breaking_changes.html", {"request": request, "enable_ads": False})
+
+
+@app.get("/guides/api-versioning-checklist", response_class=HTMLResponse)
+async def api_versioning_checklist(request: Request):
+    """Render the API versioning checklist."""
+    return templates.TemplateResponse("guide_versioning_checklist.html", {"request": request, "enable_ads": False})
+
+
+@app.get("/guides/api-contract-testing-ci", response_class=HTMLResponse)
+async def api_contract_testing_ci(request: Request):
+    """Render the API contract testing CI guide."""
+    return templates.TemplateResponse("guide_contract_testing_ci.html", {"request": request, "enable_ads": False})
+
+
+@app.get("/guides/swagger-vs-openapi-compatibility", response_class=HTMLResponse)
+async def swagger_vs_openapi_compatibility(request: Request):
+    """Render the Swagger and OpenAPI compatibility guide."""
+    return templates.TemplateResponse("guide_swagger_openapi.html", {"request": request, "enable_ads": False})
+
+
 @app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
 async def robots_txt():
     """Expose crawler instructions."""
@@ -101,6 +131,11 @@ async def sitemap_xml():
     pages = [
         ("/", "daily", "1.0"),
         ("/upload", "weekly", "0.8"),
+        ("/guides", "weekly", "0.9"),
+        ("/guides/openapi-breaking-changes", "monthly", "0.8"),
+        ("/guides/api-versioning-checklist", "monthly", "0.8"),
+        ("/guides/api-contract-testing-ci", "monthly", "0.8"),
+        ("/guides/swagger-vs-openapi-compatibility", "monthly", "0.8"),
         ("/about", "monthly", "0.6"),
         ("/privacy", "yearly", "0.4"),
         ("/terms", "yearly", "0.4"),

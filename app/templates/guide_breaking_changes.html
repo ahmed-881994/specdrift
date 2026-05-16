@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+
+{% block title %}OpenAPI Breaking Changes: Practical Guide | SpecDrift{% endblock %}
+{% block meta_description %}A practical guide to OpenAPI breaking changes, including endpoints, parameters, schemas, responses, enums, and authentication changes.{% endblock %}
+{% block og_title %}OpenAPI Breaking Changes: Practical Guide{% endblock %}
+{% block og_description %}Understand which OpenAPI changes can break existing API clients and how to review them safely.{% endblock %}
+
+{% block content %}
+<article class="content-section article">
+    <h2>OpenAPI Breaking Changes: A Practical Guide</h2>
+    <p>
+        A breaking API change is any change that can make an existing client fail without the client changing its code.
+        In OpenAPI terms, that usually means a consumer can no longer make the same request, parse the same response, or
+        authenticate the same way.
+    </p>
+
+    <h3>Quick Classification Table</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Change</th>
+                <th>Typical impact</th>
+                <th>Why it matters</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Remove a path or HTTP method</td>
+                <td>Breaking</td>
+                <td>Clients calling the operation receive errors or lose a workflow entirely.</td>
+            </tr>
+            <tr>
+                <td>Add a required request parameter</td>
+                <td>Breaking</td>
+                <td>Existing clients do not send it, so requests can start failing validation.</td>
+            </tr>
+            <tr>
+                <td>Remove a response field</td>
+                <td>Breaking or potentially breaking</td>
+                <td>Strict clients, generated SDKs, and downstream mappers may depend on that field.</td>
+            </tr>
+            <tr>
+                <td>Add an optional response field</td>
+                <td>Usually non-breaking</td>
+                <td>Most clients ignore unknown fields, though very strict parsers may need review.</td>
+            </tr>
+            <tr>
+                <td>Remove an enum value</td>
+                <td>Breaking</td>
+                <td>Clients may still send or expect the removed value.</td>
+            </tr>
+            <tr>
+                <td>Add an enum value</td>
+                <td>Potentially breaking</td>
+                <td>Clients with exhaustive switch statements can fail on a new value.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Endpoint and Method Changes</h3>
+    <p>
+        Removing <code>GET /orders/{id}</code> or changing it to another path is one of the clearest breaking changes.
+        The same is true when a method disappears from a path. Even if the new API offers an equivalent operation
+        elsewhere, existing clients need a migration path.
+    </p>
+
+    <h3>Request Changes</h3>
+    <p>
+        Request compatibility is strict because clients must send data before the server can help them. Adding a
+        required query parameter, changing a path parameter type, tightening a schema constraint, or requiring a new
+        request body property can break clients immediately.
+    </p>
+    <p>
+        Safer alternatives include adding optional parameters, accepting both old and new shapes during a transition, or
+        introducing a new operation while keeping the old one deprecated for a defined period.
+    </p>
+
+    <h3>Response Changes</h3>
+    <p>
+        Response compatibility depends on how clients parse data. Removing fields, changing field types, changing
+        success status codes, or replacing an object with an array can break generated clients and strongly typed
+        applications. Adding fields is usually safer, but public APIs should still document the change.
+    </p>
+
+    <h3>Authentication and Security Changes</h3>
+    <p>
+        Changing authentication requirements can be breaking even when endpoints and schemas stay the same. Requiring a
+        new OAuth scope, replacing API keys with bearer tokens, or moving credentials from headers to cookies can block
+        existing integrations.
+    </p>
+
+    <h3>Review Workflow</h3>
+    <ul>
+        <li>Compare the old and new OpenAPI documents before merging.</li>
+        <li>Separate breaking, potentially breaking, and non-breaking changes.</li>
+        <li>Write a migration note for every confirmed breaking change.</li>
+        <li>Deprecate before removing whenever client adoption is unknown.</li>
+        <li>Run compatibility checks in CI so risky changes are visible in pull requests.</li>
+    </ul>
+
+    <p><a class="cta" href="/upload">Compare your OpenAPI specs</a></p>
+</article>
+{% endblock %}

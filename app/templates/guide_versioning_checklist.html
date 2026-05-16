@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block title %}API Versioning Checklist for OpenAPI Changes | SpecDrift{% endblock %}
+{% block meta_description %}A practical API versioning checklist for OpenAPI teams reviewing breaking changes, deprecations, migration plans, and release readiness.{% endblock %}
+{% block og_title %}API Versioning Checklist for OpenAPI Changes{% endblock %}
+{% block og_description %}Use this checklist before shipping API contract changes to production.{% endblock %}
+
+{% block content %}
+<article class="content-section article">
+    <h2>API Versioning Checklist for OpenAPI Changes</h2>
+    <p>
+        Versioning is not only a URL decision. It is a communication contract with every consumer of your API. Before
+        changing a public or shared internal API, review the actual compatibility impact and decide whether the change
+        belongs in the current version, a deprecation cycle, or a new major version.
+    </p>
+
+    <h3>1. Identify the Contract Surface</h3>
+    <ul>
+        <li>List affected paths, methods, parameters, request bodies, responses, schemas, and security requirements.</li>
+        <li>Check whether generated SDKs, mobile apps, partner integrations, or data pipelines depend on them.</li>
+        <li>Confirm whether the published OpenAPI document matches production behavior.</li>
+    </ul>
+
+    <h3>2. Classify Each Change</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Classification</th>
+                <th>Examples</th>
+                <th>Release decision</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Breaking</td>
+                <td>Removed endpoint, new required field, changed response type</td>
+                <td>Use a new major version or a deprecation/migration period.</td>
+            </tr>
+            <tr>
+                <td>Potentially breaking</td>
+                <td>New enum value, tighter validation, changed status code</td>
+                <td>Review client behavior and communicate clearly.</td>
+            </tr>
+            <tr>
+                <td>Non-breaking</td>
+                <td>New optional field, new endpoint, expanded documentation</td>
+                <td>Usually safe in the current version.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>3. Choose a Versioning Strategy</h3>
+    <p>
+        Common strategies include path versioning such as <code>/v2/orders</code>, header-based versioning, media-type
+        versioning, or date-based versions. The best choice is the one your consumers can understand and operate
+        reliably. Avoid changing strategies during a high-risk migration unless there is a strong reason.
+    </p>
+
+    <h3>4. Deprecate Before Removing</h3>
+    <ul>
+        <li>Add deprecation notices in the OpenAPI document and public documentation.</li>
+        <li>Publish the replacement endpoint or field before turning off the old one.</li>
+        <li>Set a clear removal date and communicate it through release notes.</li>
+        <li>Track usage if you have server logs or API gateway metrics.</li>
+    </ul>
+
+    <h3>5. Prepare Migration Material</h3>
+    <p>
+        A good migration note shows the old request, the new request, important response differences, error behavior,
+        and rollout dates. If you maintain SDKs, update them before or alongside the API release.
+    </p>
+
+    <h3>6. Gate the Release</h3>
+    <ul>
+        <li>Compare old and new OpenAPI specs in CI.</li>
+        <li>Require approval for breaking and potentially breaking changes.</li>
+        <li>Run integration tests against representative clients.</li>
+        <li>Check documentation, SDKs, and changelogs before deployment.</li>
+    </ul>
+
+    <p><a class="cta" href="/upload">Run an API version comparison</a></p>
+</article>
+{% endblock %}

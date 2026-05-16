@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}OpenAPI Compatibility Guides | SpecDrift{% endblock %}
+{% block meta_description %}Practical guides for detecting OpenAPI breaking changes, versioning APIs, and adding contract checks to CI/CD.{% endblock %}
+{% block og_title %}OpenAPI Compatibility Guides{% endblock %}
+{% block og_description %}Learn how to manage API contract changes with practical OpenAPI and Swagger guides.{% endblock %}
+
+{% block content %}
+<section class="content-section article">
+    <h2>OpenAPI Compatibility Guides</h2>
+    <p>
+        These guides explain how to review API specification changes before they reach production. They are written for
+        backend developers, platform teams, API product owners, QA engineers, and documentation teams that need a shared
+        language for API compatibility.
+    </p>
+
+    <div class="guide-grid">
+        <a class="guide-card" href="/guides/openapi-breaking-changes">
+            <h3>OpenAPI Breaking Changes</h3>
+            <p>Learn which changes are breaking, potentially breaking, or safe for existing clients.</p>
+        </a>
+        <a class="guide-card" href="/guides/api-versioning-checklist">
+            <h3>API Versioning Checklist</h3>
+            <p>A practical checklist for deciding when to version, deprecate, document, or delay an API change.</p>
+        </a>
+        <a class="guide-card" href="/guides/api-contract-testing-ci">
+            <h3>API Contract Testing in CI</h3>
+            <p>Use OpenAPI comparisons as a release gate in pull requests and deployment pipelines.</p>
+        </a>
+        <a class="guide-card" href="/guides/swagger-vs-openapi-compatibility">
+            <h3>Swagger vs OpenAPI Compatibility</h3>
+            <p>Understand the practical differences between Swagger 2.0 and OpenAPI 3.x when comparing specs.</p>
+        </a>
+    </div>
+</section>
+{% endblock %}

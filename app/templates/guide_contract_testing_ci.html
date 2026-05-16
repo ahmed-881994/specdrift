@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block title %}API Contract Testing in CI with OpenAPI Specs | SpecDrift{% endblock %}
+{% block meta_description %}Learn how to add OpenAPI contract comparison to CI/CD so pull requests reveal breaking API changes before deployment.{% endblock %}
+{% block og_title %}API Contract Testing in CI with OpenAPI Specs{% endblock %}
+{% block og_description %}Turn OpenAPI spec comparison into a practical release gate for API teams.{% endblock %}
+
+{% block content %}
+<article class="content-section article">
+    <h2>API Contract Testing in CI with OpenAPI Specs</h2>
+    <p>
+        API contract testing in CI helps teams catch compatibility risks before an API change reaches production. The
+        simplest version is to compare the OpenAPI spec from the main branch with the spec from a pull request and make
+        the difference visible to reviewers.
+    </p>
+
+    <h3>What to Compare</h3>
+    <p>
+        Choose a stable baseline and a candidate specification. For a pull request, the baseline is often the last
+        released OpenAPI document or the document on <code>main</code>. The candidate is generated or committed by the
+        branch being reviewed.
+    </p>
+
+    <h3>Recommended Pipeline</h3>
+    <ol>
+        <li>Generate or validate the OpenAPI document.</li>
+        <li>Fetch the previous released document.</li>
+        <li>Compare the two specifications.</li>
+        <li>Fail the job on unapproved breaking changes.</li>
+        <li>Attach the comparison summary to the pull request.</li>
+    </ol>
+
+    <h3>Suggested Gate Rules</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Finding</th>
+                <th>CI behavior</th>
+                <th>Reviewer action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Breaking changes</td>
+                <td>Fail by default</td>
+                <td>Require versioning, rollback, or explicit API owner approval.</td>
+            </tr>
+            <tr>
+                <td>Potentially breaking changes</td>
+                <td>Warn or require review</td>
+                <td>Check client expectations and release notes.</td>
+            </tr>
+            <tr>
+                <td>Non-breaking changes</td>
+                <td>Pass</td>
+                <td>Confirm docs and examples are updated.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Common Sources of Drift</h3>
+    <ul>
+        <li>Manual edits to documentation that do not match code behavior.</li>
+        <li>Framework-generated specs changing after dependency upgrades.</li>
+        <li>Backend validation rules changing without schema updates.</li>
+        <li>SDKs generated from a different spec than the one published to users.</li>
+    </ul>
+
+    <h3>Make Results Actionable</h3>
+    <p>
+        A useful CI report should identify the affected path, method, field, and reason. Avoid dumping a large raw diff
+        into the pull request. Reviewers need to know whether a change breaks consumers and what decision is required.
+    </p>
+
+    <h3>Start Lightweight</h3>
+    <p>
+        You do not need a perfect governance process to begin. Start by running comparisons in warning mode. Once the
+        team trusts the signal, fail builds for confirmed breaking changes and require a documented exception path.
+    </p>
+
+    <p><a class="cta" href="/upload">Try a contract comparison</a></p>
+</article>
+{% endblock %}
