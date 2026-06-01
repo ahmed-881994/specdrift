@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SpecDrift">
+  <rect width="64" height="64" rx="14" fill="#07090c"/>
+  <path d="M12 18.5h40M12 32h40M12 45.5h40M18.5 12v40M32 12v40M45.5 12v40" stroke="#1d2734" stroke-width="1"/>
+  <path d="M13 14h19l5 5v29H13z" fill="#0c1117" stroke="#2a3645" stroke-width="2"/>
+  <path d="M32 14v6h5" fill="none" stroke="#657184" stroke-width="2"/>
+  <path d="M20 24h10M20 31h8M20 38h11" stroke="#7fb3ff" stroke-width="2" stroke-linecap="square"/>
+  <path d="M27 22l-4 4 4 4M23 34l4 4-4 4" fill="none" stroke="#8b98aa" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M28 28h23M28 36h23" stroke="#657184" stroke-width="2" stroke-linecap="square"/>
+  <path d="M42 22h11v11H42z" fill="#2a0f18" stroke="#ff6f85" stroke-width="2"/>
+  <path d="M45 27.5h5" stroke="#ff6f85" stroke-width="2.5" stroke-linecap="square"/>
+  <path d="M42 35h11v11H42z" fill="#0e2b1d" stroke="#5fe1a0" stroke-width="2"/>
+  <path d="M47.5 38v5M45 40.5h5" stroke="#5fe1a0" stroke-width="2.5" stroke-linecap="square"/>
+  <path d="M35 50l7-7" stroke="#f0c674" stroke-width="3" stroke-linecap="square"/>
+</svg>
