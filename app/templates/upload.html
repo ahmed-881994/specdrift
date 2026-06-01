@@ -324,11 +324,19 @@
             throw new Error(`Please provide a ${key} specification URL`);
         }
         state.status.textContent = 'Fetching URL...';
-        const response = await fetch(url);
+        const formData = new FormData();
+        formData.append('url', url);
+
+        const response = await fetch('/api/fetch-spec', {
+            method: 'POST',
+            body: formData
+        });
         if (!response.ok) {
-            throw new Error(`Could not fetch ${key} specification URL`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Could not fetch ${key} specification URL`);
         }
-        state.textarea.value = await response.text();
+        const data = await response.json();
+        state.textarea.value = data.content || '';
         syncMeta(key);
         const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
         if (pasteTab) activatePanel(pasteTab);
@@ -336,6 +344,14 @@
 
     async function getSpecContent(key) {
         const state = specState[key];
+        const fileTab = document.getElementById(`${key}FileTab`);
+        const urlTab = document.getElementById(`${key}UrlTab`);
+
+        if (urlTab && !urlTab.hidden && state.url.value.trim()) {
+            await fetchSpec(key);
+            return state.textarea.value;
+        }
+        if (fileTab && !fileTab.hidden && state.file.files[0]) return state.file.files[0].text();
         if (state.textarea.value.trim()) return state.textarea.value;
         if (state.file.files[0]) return state.file.files[0].text();
         if (state.url.value.trim()) {

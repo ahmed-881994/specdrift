@@ -7,8 +7,29 @@ Handles uploading specs and returning diff results.
 from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from app.services.diff_service import DiffService
+from app.services.spec_fetcher import SpecFetchError, fetch_spec_from_url
 
 router = APIRouter()
+
+
+@router.post("/api/fetch-spec")
+async def fetch_spec(
+    url: str = Form(..., description="URL of a JSON or YAML API specification"),
+):
+    """
+    Fetch an API specification from a URL.
+
+    Args:
+        url: Remote specification URL
+
+    Returns:
+        JSON with the fetched specification content
+    """
+    try:
+        content = fetch_spec_from_url(url.strip())
+        return JSONResponse(content={"content": content})
+    except SpecFetchError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/api/compare")
