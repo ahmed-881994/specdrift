@@ -10,85 +10,53 @@
 
 {% block content %}
 
-<section class="results-guide">
-    <h2>Understanding Your API Comparison Results</h2>
-    <p>
-        SpecDrift provides a comprehensive analysis of changes between your API specifications.
-        Each change is categorized by its impact level to help you make informed decisions about API versioning and deployment.
-    </p>
-
-    <div class="severity-guide">
-        <h3>Change Severity Levels</h3>
-        
-        <div class="severity-item breaking-severity">
-            <h4>🚨 Breaking Changes</h4>
-            <p><strong>Critical - Immediate Action Required</strong></p>
-            <p>These changes will break existing client integrations and require immediate updates from API consumers. Examples include:</p>
-            <ul>
-                <li>Removed endpoints or operations</li>
-                <li>Deleted required request parameters or properties</li>
-                <li>Changed response data types</li>
-                <li>Removed enum values</li>
-                <li>Made optional parameters required</li>
-            </ul>
-            <p><strong>Action:</strong> Communicate these changes to all API consumers before deployment. Consider versioning your API or maintaining backward compatibility.</p>
+<section class="repaint-upload-hero repaint-results-hero">
+    <div class="repaint-grid-bg" aria-hidden="true"></div>
+    <div class="repaint-section-inner">
+        <div class="repaint-route-line">
+            <span>route</span>
+            <strong>/result</strong>
+            <span>report</span>
+            <strong>classification</strong>
         </div>
-
-        <div class="severity-item potentially-severity">
-            <h4>⚠️ Potentially Breaking Changes</h4>
-            <p><strong>High Priority - Review Required</strong></p>
-            <p>These changes may break client implementations depending on how they're written. Examples include:</p>
-            <ul>
-                <li>Modified HTTP status codes</li>
-                <li>Changed parameter or property formats</li>
-                <li>Updated authentication schemes</li>
-                <li>Modified content types</li>
-                <li>Changed validation rules (min/max, patterns)</li>
-            </ul>
-            <p><strong>Action:</strong> Test thoroughly with existing clients. These changes might only affect specific use cases but should be communicated to developers.</p>
-        </div>
-
-        <div class="severity-item non-breaking-severity">
-            <h4>✅ Non-Breaking Changes</h4>
-            <p><strong>Safe - No Breaking Impact</strong></p>
-            <p>These changes enhance your API without breaking existing clients. Examples include:</p>
-            <ul>
-                <li>New endpoints or operations added</li>
-                <li>New optional parameters or properties</li>
-                <li>Additional enum values</li>
-                <li>New response fields</li>
-                <li>Enhanced documentation</li>
-            </ul>
-            <p><strong>Action:</strong> Deploy with confidence. Existing clients will continue to work, and new functionality is available for updated clients.</p>
-        </div>
+        <h1>Review the API change verdict.</h1>
+        <p>
+            SpecDrift groups detected changes by impact so you can decide what needs a migration plan,
+            client testing, documentation, or a normal release note.
+        </p>
     </div>
-
-    <h3>Best Practices for API Evolution</h3>
-    <ul>
-        <li><strong>Version Your API:</strong> Use semantic versioning to communicate the impact of changes (major.minor.patch)</li>
-        <li><strong>Deprecate Gradually:</strong> Mark endpoints as deprecated before removing them, giving clients time to migrate</li>
-        <li><strong>Document Everything:</strong> Clearly document all changes in your API changelog and release notes</li>
-        <li><strong>Test Backwards Compatibility:</strong> Run integration tests with existing client code before releasing</li>
-        <li><strong>Communicate Early:</strong> Inform API consumers about upcoming breaking changes well in advance</li>
-    </ul>
-
-    <h3>What to Do With Your Results</h3>
-    <p>
-        After reviewing your comparison results below, consider these next steps:
-    </p>
-    <ol>
-        <li>Document all breaking changes in your API changelog</li>
-        <li>Notify affected developers and update your API documentation</li>
-        <li>Create migration guides for breaking changes</li>
-        <li>Update your API version number appropriately</li>
-        <li>Run SpecDrift comparisons regularly as part of your CI/CD pipeline</li>
-    </ol>
 </section>
 
-<div id="results" class="results-container"></div>
-<div class="form-actions">
-    <a href="/upload" class="cta">Compare Another Spec</a>
-</div>
+<section class="repaint-band">
+    <div class="repaint-section-inner">
+        <div class="repaint-card-grid repaint-results-guide">
+            <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--breaking">
+                <span class="tone-del">Breaking</span>
+                <h3>Immediate action</h3>
+                <p>Removed endpoints, deleted required fields, incompatible response types, and newly required inputs.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--risky">
+                <span class="tone-warn">Risky</span>
+                <h3>Review required</h3>
+                <p>Status code changes, auth changes, stricter validation rules, content type changes, and ambiguous schema shifts.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--safe">
+                <span class="tone-add">Safe</span>
+                <h3>Additive change</h3>
+                <p>New endpoints, optional fields, additional enum values, new response headers, and documentation improvements.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="repaint-band repaint-band--muted">
+    <div class="repaint-section-inner">
+        <div id="results" class="results-container repaint-results-container"></div>
+        <div class="repaint-actions">
+            <a href="/upload" class="repaint-button repaint-button--primary">Compare another spec</a>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -111,10 +79,10 @@
         const changes = result.changes;
 
         let html = `
-            <div class="summary">
+            <div class="summary repaint-result-summary">
                 <div class="summary-header">
                     <h2>Comparison Results</h2>
-                    <button id="showAll" class="btn btn-secondary show-all-button">Show All</button>
+                    <button id="showAll" class="repaint-mini-button show-all-button" hidden>Show All</button>
                 </div>
         `;
 
@@ -128,16 +96,16 @@
         }
 
         html += `
-                <div class="summary-grid">
-                    <div class="summary-item breaking" data-filter="breaking">
+                <div class="summary-grid repaint-result-grid">
+                    <div class="summary-item repaint-result-metric breaking" data-filter="breaking">
                         <span class="count">${summary.breaking}</span>
                         <span class="label">Breaking Changes</span>
                     </div>
-                    <div class="summary-item potentially-breaking" data-filter="potentially-breaking">
+                    <div class="summary-item repaint-result-metric potentially-breaking" data-filter="potentially-breaking">
                         <span class="count">${summary.potentially_breaking}</span>
                         <span class="label">Potentially Breaking</span>
                     </div>
-                    <div class="summary-item non-breaking" data-filter="non-breaking">
+                    <div class="summary-item repaint-result-metric non-breaking" data-filter="non-breaking">
                         <span class="count">${summary.non_breaking}</span>
                         <span class="label">Non-Breaking Changes</span>
                     </div>
@@ -146,7 +114,7 @@
         `;
 
         if (changes.length === 0) {
-            html += '<p class="no-changes">✓ No changes detected</p>';
+            html += '<p class="no-changes">No changes detected</p>';
         } else {
             html += '<div class="changes-list">';
 
@@ -183,15 +151,14 @@
                 summaryItems.forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
 
-                // Show the "Show All" button
-                showAllBtn.style.display = 'inline-block';
+                showAllBtn.hidden = false;
             });
         });
 
         showAllBtn.addEventListener('click', () => {
             filterChanges(null);
             summaryItems.forEach(i => i.classList.remove('active'));
-            showAllBtn.style.display = 'none';
+            showAllBtn.hidden = true;
         });
     }
 
@@ -200,27 +167,23 @@
 
         if (!type) {
             // Show all
-            changeGroups.forEach(group => group.style.display = 'block');
+            changeGroups.forEach(group => group.hidden = false);
         } else {
             // Filter by type
             changeGroups.forEach(group => {
-                if (group.classList.contains(type)) {
-                    group.style.display = 'block';
-                } else {
-                    group.style.display = 'none';
-                }
+                group.hidden = !group.classList.contains(type);
             });
         }
     }
 
     function renderChangeGroup(title, changes, className) {
-        let html = `<div class="change-group ${className}">`;
+        let html = `<div class="change-group repaint-change-group ${className}">`;
         html += `<h3>${title}</h3>`;
         html += '<ul>';
 
         for (const change of changes) {
             html += '<li>';
-            html += '<div class="change-item">';
+            html += '<div class="change-item repaint-change-item">';
             
             // Main change header with better spacing
             html += '<div class="change-header">';
@@ -251,7 +214,7 @@
             
             // Message - more readable
             html += `<div class="change-message">`;
-            html += `<span class="message-icon">→</span> ${escapeHtml(change.message)}`;
+            html += `<span class="message-icon">-&gt;</span> ${escapeHtml(change.message)}`;
             html += `</div>`;
             
             // Additional details if present - better formatted

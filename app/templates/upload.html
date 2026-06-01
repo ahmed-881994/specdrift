@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block title %}Compare Swagger and OpenAPI Specs for Breaking Changes{% endblock %}
-{% block meta_description %}Upload or paste two Swagger or OpenAPI specs to detect breaking API changes, risky schema updates, and safe contract differences.{% endblock %}
+{% block meta_description %}Upload, paste, or fetch two Swagger or OpenAPI specs to detect breaking API changes, risky schema updates, and safe contract differences.{% endblock %}
 {% block og_title %}Compare Swagger and OpenAPI Specs{% endblock %}
 {% block og_description %}Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.{% endblock %}
 {% block twitter_title %}Compare Swagger and OpenAPI Specs{% endblock %}
@@ -32,256 +32,383 @@
 {% endblock %}
 
 {% block content %}
-
-<section class="instructions-section">
-    <h1>Compare API Specifications</h1>
-    <p>
-        SpecDrift helps you identify breaking changes between two versions of your API specification.
-        Upload or paste your Swagger 2.0 or OpenAPI 3.0 specifications (JSON or YAML format) to get started.
-    </p>
-    
-    <div class="info-grid">
-        <div class="info-card">
-            <h3>📤 Step 1: Upload Your Specs</h3>
-            <p>Choose to either upload files or paste your API specifications directly into the text areas below. Supports both JSON and YAML formats.</p>
+<section class="repaint-upload-hero">
+    <div class="repaint-grid-bg" aria-hidden="true"></div>
+    <div class="repaint-section-inner">
+        <div class="repaint-route-line">
+            <span>route</span>
+            <strong>/upload</strong>
+            <span>workbench</span>
+            <strong>compare</strong>
+            <em><span aria-hidden="true"></span>Ready</em>
         </div>
-        
-        <div class="info-card">
-            <h3>🔍 Step 2: Compare</h3>
-            <p>Click "Compare Specs" and our tool will analyze both specifications, identifying all changes and categorizing them by severity.</p>
-        </div>
-        
-        <div class="info-card">
-            <h3>📊 Step 3: Review Results</h3>
-            <p>See a detailed breakdown of breaking changes, potentially breaking changes, and safe non-breaking changes with clear explanations.</p>
+        <h1>Compare two API specifications.</h1>
+        <p>
+            Drop in two Swagger 2.0 or OpenAPI 3.x documents, JSON or YAML. SpecDrift parses semantics,
+            not text, and classifies every difference as <span class="tone-del">breaking</span>,
+            <span class="tone-warn">risky</span>, or <span class="tone-add">safe</span>.
+        </p>
+        <div class="repaint-step-grid" aria-label="Comparison steps">
+            <article class="repaint-step-card repaint-brackets">
+                <span>STEP 01</span>
+                <h2>Load both specs</h2>
+                <p>Paste, upload a file, or fetch from a URL. YAML and JSON are accepted.</p>
+            </article>
+            <article class="repaint-step-card repaint-brackets">
+                <span>STEP 02</span>
+                <h2>Run the diff</h2>
+                <p>SpecDrift walks paths, parameters, requests, responses, schemas, and security.</p>
+            </article>
+            <article class="repaint-step-card repaint-brackets">
+                <span>STEP 03</span>
+                <h2>Review the verdict</h2>
+                <p>Results are grouped by impact so you can decide what to ship, fix, or document.</p>
+            </article>
         </div>
     </div>
-
-    <h3>What Changes Does SpecDrift Detect?</h3>
-    <ul>
-        <li><strong>Breaking Changes:</strong> Removed endpoints, deleted required parameters, changed response types, removed enum values</li>
-        <li><strong>Potentially Breaking:</strong> Modified status codes, changed parameter formats, updated authentication requirements</li>
-        <li><strong>Non-Breaking Changes:</strong> New endpoints, added optional parameters, expanded enum values, new response properties</li>
-    </ul>
-
-    <h3>Tips for Best Results</h3>
-    <ul>
-        <li>Ensure your specifications are valid Swagger 2.0 or OpenAPI 3.0 documents</li>
-        <li>Use the "Beautify" button to format your specs for easier review</li>
-        <li>Compare sequential versions of your API to track changes over time</li>
-        <li>Review all breaking changes before deploying API updates to production</li>
-    </ul>
 </section>
 
-<form id="comparisonForm" class="form-container">
-    <fieldset>
-        <legend>Compare API Specifications</legend>
-
-        <div class="spec-grid">
-            <div class="form-group">
-                <label for="oldSpecTab">Old Specification</label>
-                <div class="input-tabs">
-                    <button type="button" class="tab-button active" data-tab="oldPasteTab">Paste</button>
-                    <button type="button" class="tab-button" data-tab="oldFileTab">Upload File</button>
-                </div>
-
-                <div class="tab-content" id="oldFileTab" style="display: none;">
-                    <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" class="file-input" />
-                </div>
-                <div class="tab-content" id="oldPasteTab">
-                    <div class="spec-input">
-                        <div class="line-numbers" aria-hidden="true"></div>
-                        <textarea id="oldSpecText" class="spec-textarea"
-                            placeholder="Paste your Swagger / OpenAPI spec here..." spellcheck="false"></textarea>
-                    </div>
-                    <div class="input-actions">
-                        <button type="button" class="btn btn-tertiary" data-target="oldSpecText">Beautify</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="newSpecTab">New Specification</label>
-                <div class="input-tabs">
-                    <button type="button" class="tab-button active" data-tab="newPasteTab">Paste</button>
-                    <button type="button" class="tab-button" data-tab="newFileTab">Upload File</button>
-                </div>
-
-                <div class="tab-content" id="newFileTab" style="display: none;">
-                    <input type="file" id="newFileInput" accept=".json,.yaml,.yml" class="file-input" />
-                </div>
-                <div class="tab-content" id="newPasteTab">
-                    <div class="spec-input">
-                        <div class="line-numbers" aria-hidden="true"></div>
-                        <textarea id="newSpecText" class="spec-textarea"
-                            placeholder="Paste your Swagger / OpenAPI spec here..." spellcheck="false"></textarea>
-                    </div>
-                    <div class="input-actions">
-                        <button type="button" class="btn btn-tertiary" data-target="newSpecText">Beautify</button>
-                    </div>
-                </div>
-            </div>
+<section class="repaint-band">
+    <div class="repaint-section-inner">
+        <div class="repaint-section-heading repaint-section-heading--compact">
+            <span>SEC 01 / 03</span>
+            <h2>Workbench</h2>
         </div>
 
-        <div class="form-actions">
-            <button type="submit" class="cta">Compare Specs</button>
-            <button type="reset" class="btn btn-secondary">Clear</button>
+        <form id="comparisonForm" class="repaint-workbench" novalidate>
+            <div class="repaint-editor-grid">
+                <section class="repaint-editor repaint-brackets" data-spec-panel="old">
+                    <div class="repaint-editor__titlebar">
+                        <div>
+                            <span class="dot tone-del-bg"></span>
+                            <span class="tone-del">spec[A]</span>
+                            <span>old</span>
+                            <span id="oldVersion">v?.?.?</span>
+                        </div>
+                        <div class="repaint-editor__meta">
+                            <span id="oldBytes">0 B</span>
+                            <span id="oldLines">1 L</span>
+                        </div>
+                    </div>
+
+                    <div class="repaint-editor__tabs" role="tablist" aria-label="Old specification input mode">
+                        <button type="button" class="repaint-tab is-active" data-target="oldPasteTab">Paste</button>
+                        <button type="button" class="repaint-tab" data-target="oldFileTab">Upload file</button>
+                        <button type="button" class="repaint-tab" data-target="oldUrlTab">From URL</button>
+                        <button type="button" class="repaint-tab repaint-tab--action" data-format-target="oldSpecText">Beautify</button>
+                    </div>
+
+                    <div class="repaint-panel" id="oldPasteTab">
+                        <label class="sr-only" for="oldSpecText">Old specification</label>
+                        <div class="repaint-code-input">
+                            <div class="line-numbers" aria-hidden="true"></div>
+                            <textarea id="oldSpecText" class="spec-textarea"
+                                placeholder="Paste your old Swagger / OpenAPI spec here..." spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                    <div class="repaint-panel" id="oldFileTab" hidden>
+                        <label class="repaint-file-drop">
+                            <span>Upload old spec</span>
+                            <input type="file" id="oldFileInput" accept=".json,.yaml,.yml" />
+                        </label>
+                    </div>
+                    <div class="repaint-panel" id="oldUrlTab" hidden>
+                        <label class="sr-only" for="oldSpecUrl">Old specification URL</label>
+                        <div class="repaint-url-row">
+                            <input type="url" id="oldSpecUrl" placeholder="https://example.com/openapi.yaml">
+                            <button type="button" class="repaint-mini-button" data-url-target="old">Fetch</button>
+                        </div>
+                    </div>
+
+                    <div class="repaint-editor__status">
+                        <span id="oldStatus">Waiting for input</span>
+                        <span>YAML / JSON</span>
+                    </div>
+                </section>
+
+                <div class="repaint-diff-arrow" aria-hidden="true">
+                    <span>&rarr;</span>
+                    <small>diff</small>
+                </div>
+
+                <section class="repaint-editor repaint-brackets" data-spec-panel="new">
+                    <div class="repaint-editor__titlebar">
+                        <div>
+                            <span class="dot tone-add-bg"></span>
+                            <span class="tone-add">spec[B]</span>
+                            <span>new</span>
+                            <span id="newVersion">v?.?.?</span>
+                        </div>
+                        <div class="repaint-editor__meta">
+                            <span id="newBytes">0 B</span>
+                            <span id="newLines">1 L</span>
+                        </div>
+                    </div>
+
+                    <div class="repaint-editor__tabs" role="tablist" aria-label="New specification input mode">
+                        <button type="button" class="repaint-tab is-active" data-target="newPasteTab">Paste</button>
+                        <button type="button" class="repaint-tab" data-target="newFileTab">Upload file</button>
+                        <button type="button" class="repaint-tab" data-target="newUrlTab">From URL</button>
+                        <button type="button" class="repaint-tab repaint-tab--action" data-format-target="newSpecText">Beautify</button>
+                    </div>
+
+                    <div class="repaint-panel" id="newPasteTab">
+                        <label class="sr-only" for="newSpecText">New specification</label>
+                        <div class="repaint-code-input">
+                            <div class="line-numbers" aria-hidden="true"></div>
+                            <textarea id="newSpecText" class="spec-textarea"
+                                placeholder="Paste your new Swagger / OpenAPI spec here..." spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                    <div class="repaint-panel" id="newFileTab" hidden>
+                        <label class="repaint-file-drop">
+                            <span>Upload new spec</span>
+                            <input type="file" id="newFileInput" accept=".json,.yaml,.yml" />
+                        </label>
+                    </div>
+                    <div class="repaint-panel" id="newUrlTab" hidden>
+                        <label class="sr-only" for="newSpecUrl">New specification URL</label>
+                        <div class="repaint-url-row">
+                            <input type="url" id="newSpecUrl" placeholder="https://example.com/openapi.yaml">
+                            <button type="button" class="repaint-mini-button" data-url-target="new">Fetch</button>
+                        </div>
+                    </div>
+
+                    <div class="repaint-editor__status">
+                        <span id="newStatus">Waiting for input</span>
+                        <span>YAML / JSON</span>
+                    </div>
+                </section>
+            </div>
+
+            <div class="repaint-runbar repaint-brackets">
+                <span>run</span>
+                <strong>spec[A] &rarr; spec[B]</strong>
+                <div>
+                    <button type="reset" class="repaint-mini-button">Clear</button>
+                    <button type="button" id="swapSpecs" class="repaint-mini-button">Swap</button>
+                    <button type="submit" class="repaint-button repaint-button--primary">Compare specs</button>
+                </div>
+            </div>
+            <p class="repaint-privacy-note">Comparisons are processed for this request only. Specs are not stored by SpecDrift.</p>
+        </form>
+
+        <div id="loading" class="loading repaint-message" hidden>
+            <p>Comparing specifications...</p>
         </div>
-    </fieldset>
-</form>
+        <div id="error" class="error repaint-message" hidden></div>
+    </div>
+</section>
 
-<div id="results" class="results-container" style="display: none;">
-    <div id="resultsContent"></div>
-</div>
+<section class="repaint-band repaint-band--muted">
+    <div class="repaint-section-inner repaint-tips">
+        <div class="repaint-section-heading">
+            <span>SEC 02 / 03</span>
+            <h2>What the engine detects</h2>
+        </div>
+        <div class="repaint-card-grid">
+            <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--breaking">
+                <span>BREAKING</span>
+                <h3>Removed contract surface</h3>
+                <p>Removed endpoints, required parameters, response fields, enum values, or incompatible type changes.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--risky">
+                <span>RISKY</span>
+                <h3>Review-worthy changes</h3>
+                <p>Status code changes, stricter validation, auth changes, format changes, and ambiguous schema updates.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--safe">
+                <span>SAFE</span>
+                <h3>Additive improvements</h3>
+                <p>New endpoints, optional parameters, response additions, expanded capabilities, and documentation updates.</p>
+            </article>
+        </div>
+    </div>
+</section>
+{% endblock %}
 
-<div id="loading" class="loading" style="display: none;">
-    <p>Comparing specifications...</p>
-</div>
-
-<div id="error" class="error" style="display: none;"></div>
-</main>
-</div>
-
+{% block extra_scripts %}
 <script>
-    // Tab switching
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.preventDefault();
-            const tabName = this.dataset.tab;
-            const tabContent = document.getElementById(tabName);
-            const isOld = tabName.startsWith('old');
-
-            // Hide all tabs for this group
-            if (isOld) {
-                document.getElementById('oldFileTab').style.display = 'none';
-                document.getElementById('oldPasteTab').style.display = 'none';
-                document.querySelectorAll('.form-group:has(#oldFileTab) .tab-button').forEach(b =>
-                    b.classList.remove('active')
-                );
-            } else {
-                document.getElementById('newFileTab').style.display = 'none';
-                document.getElementById('newPasteTab').style.display = 'none';
-                document.querySelectorAll('.form-group:has(#newFileTab) .tab-button').forEach(b =>
-                    b.classList.remove('active')
-                );
-            }
-
-            // Show selected tab
-            tabContent.style.display = 'block';
-            this.classList.add('active');
-            syncLineNumbers();
-        });
-    });
-
-    // Line numbers
-    const textareas = [
-        document.getElementById('oldSpecText'),
-        document.getElementById('newSpecText')
-    ];
+    const specState = {
+        old: {
+            textarea: document.getElementById('oldSpecText'),
+            file: document.getElementById('oldFileInput'),
+            url: document.getElementById('oldSpecUrl'),
+            status: document.getElementById('oldStatus'),
+            bytes: document.getElementById('oldBytes'),
+            lines: document.getElementById('oldLines'),
+            version: document.getElementById('oldVersion')
+        },
+        new: {
+            textarea: document.getElementById('newSpecText'),
+            file: document.getElementById('newFileInput'),
+            url: document.getElementById('newSpecUrl'),
+            status: document.getElementById('newStatus'),
+            bytes: document.getElementById('newBytes'),
+            lines: document.getElementById('newLines'),
+            version: document.getElementById('newVersion')
+        }
+    };
 
     function updateLineNumbers(textarea) {
         const gutter = textarea?.previousElementSibling;
         if (!gutter) return;
-        const lines = (textarea.value.split(/\n/).length || 1);
-        gutter.innerHTML = '';
-        for (let i = 1; i <= lines; i += 1) {
+        const count = Math.max(textarea.value.split(/\n/).length, 1);
+        gutter.replaceChildren(...Array.from({ length: count }, (_, index) => {
             const line = document.createElement('span');
-            line.textContent = i;
-            gutter.appendChild(line);
-        }
+            line.textContent = index + 1;
+            return line;
+        }));
         gutter.scrollTop = textarea.scrollTop;
     }
 
-    function syncLineNumbers() {
-        textareas.forEach(updateLineNumbers);
+    function syncMeta(key) {
+        const state = specState[key];
+        const value = state.textarea.value;
+        const lineCount = Math.max(value.split(/\n/).length, 1);
+        state.bytes.textContent = `${new Blob([value]).size} B`;
+        state.lines.textContent = `${lineCount} L`;
+        state.status.textContent = value.trim() ? 'Ready to compare' : 'Waiting for input';
+        state.version.textContent = extractVersion(value);
+        updateLineNumbers(state.textarea);
     }
 
-    textareas.forEach(textarea => {
-        if (!textarea) return;
-        textarea.addEventListener('input', () => updateLineNumbers(textarea));
-        textarea.addEventListener('scroll', () => {
-            const gutter = textarea.previousElementSibling;
-            if (gutter) gutter.scrollTop = textarea.scrollTop;
-        });
-    });
+    function extractVersion(raw) {
+        if (!raw.trim()) return 'v?.?.?';
+        try {
+            const parsed = JSON.parse(raw);
+            return parsed?.info?.version ? `v${parsed.info.version}` : 'v?.?.?';
+        } catch (err) {
+            const match = raw.match(/^\s*version:\s*['"]?([^'"\n]+)['"]?/m);
+            return match ? `v${match[1].trim()}` : 'v?.?.?';
+        }
+    }
 
-    syncLineNumbers();
-
-    // Basic JSON/YAML formatting
     function formatSpec(textareaId) {
         const textarea = document.getElementById(textareaId);
         if (!textarea) return;
         const raw = textarea.value;
         if (!raw.trim()) return;
 
-        // Try JSON first
         try {
-            const parsedJson = JSON.parse(raw);
-            textarea.value = JSON.stringify(parsedJson, null, 2);
-            updateLineNumbers(textarea);
-            return;
-        } catch (err) {
-            // Fall through to YAML
-        }
-
-        // Try YAML if js-yaml is available
-        if (window.jsyaml && typeof window.jsyaml.load === 'function') {
-            try {
-                const parsedYaml = window.jsyaml.load(raw);
-                const dumped = window.jsyaml.dump(parsedYaml, { indent: 2, lineWidth: 80 });
-                textarea.value = dumped;
-                updateLineNumbers(textarea);
-            } catch (err) {
-                // No-op if not valid YAML; keep user content untouched
+            textarea.value = JSON.stringify(JSON.parse(raw), null, 2);
+        } catch (jsonError) {
+            if (window.jsyaml && typeof window.jsyaml.load === 'function') {
+                try {
+                    textarea.value = window.jsyaml.dump(window.jsyaml.load(raw), { indent: 2, lineWidth: 88 });
+                } catch (yamlError) {
+                    return;
+                }
             }
         }
+
+        syncMeta(textareaId.startsWith('old') ? 'old' : 'new');
     }
 
-    document.querySelectorAll('.btn-tertiary').forEach(button => {
-        button.addEventListener('click', () => {
-            const target = button.dataset.target;
-            if (target) formatSpec(target);
+    function activatePanel(button) {
+        const target = document.getElementById(button.dataset.target);
+        if (!target) return;
+        const editor = button.closest('.repaint-editor');
+        editor.querySelectorAll('.repaint-panel').forEach(panel => {
+            panel.hidden = panel !== target;
+        });
+        editor.querySelectorAll('.repaint-tab[data-target]').forEach(tab => {
+            tab.classList.toggle('is-active', tab === button);
+        });
+    }
+
+    async function fetchSpec(key) {
+        const state = specState[key];
+        const url = state.url.value.trim();
+        if (!url) {
+            throw new Error(`Please provide a ${key} specification URL`);
+        }
+        state.status.textContent = 'Fetching URL...';
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Could not fetch ${key} specification URL`);
+        }
+        state.textarea.value = await response.text();
+        syncMeta(key);
+        const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
+        if (pasteTab) activatePanel(pasteTab);
+    }
+
+    async function getSpecContent(key) {
+        const state = specState[key];
+        if (state.textarea.value.trim()) return state.textarea.value;
+        if (state.file.files[0]) return state.file.files[0].text();
+        if (state.url.value.trim()) {
+            await fetchSpec(key);
+            return state.textarea.value;
+        }
+        throw new Error(`Please provide the ${key === 'old' ? 'old' : 'new'} specification`);
+    }
+
+    document.querySelectorAll('.repaint-tab[data-target]').forEach(button => {
+        button.addEventListener('click', () => activatePanel(button));
+    });
+
+    document.querySelectorAll('[data-format-target]').forEach(button => {
+        button.addEventListener('click', () => formatSpec(button.dataset.formatTarget));
+    });
+
+    document.querySelectorAll('[data-url-target]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const error = document.getElementById('error');
+            try {
+                error.hidden = true;
+                await fetchSpec(button.dataset.urlTarget);
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.hidden = false;
+            }
         });
     });
 
-    // Form submission
-    document.getElementById('comparisonForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
+    Object.entries(specState).forEach(([key, state]) => {
+        state.textarea.addEventListener('input', () => syncMeta(key));
+        state.textarea.addEventListener('scroll', () => {
+            const gutter = state.textarea.previousElementSibling;
+            if (gutter) gutter.scrollTop = state.textarea.scrollTop;
+        });
+        state.file.addEventListener('change', async () => {
+            if (!state.file.files[0]) return;
+            state.textarea.value = await state.file.files[0].text();
+            syncMeta(key);
+            const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
+            if (pasteTab) activatePanel(pasteTab);
+        });
+        syncMeta(key);
+    });
+
+    document.getElementById('swapSpecs').addEventListener('click', () => {
+        const oldText = specState.old.textarea.value;
+        specState.old.textarea.value = specState.new.textarea.value;
+        specState.new.textarea.value = oldText;
+        syncMeta('old');
+        syncMeta('new');
+    });
+
+    document.getElementById('comparisonForm').addEventListener('reset', () => {
+        setTimeout(() => {
+            Object.keys(specState).forEach(syncMeta);
+            document.getElementById('error').hidden = true;
+        }, 0);
+    });
+
+    document.getElementById('comparisonForm').addEventListener('submit', async event => {
+        event.preventDefault();
 
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
-        const results = document.getElementById('results');
-
-        loading.style.display = 'block';
-        error.style.display = 'none';
-        results.style.display = 'none';
+        loading.hidden = false;
+        error.hidden = true;
 
         try {
-            let oldContent, newContent;
+            const oldContent = await getSpecContent('old');
+            const newContent = await getSpecContent('new');
 
-            // Get old spec
-            const oldFile = document.getElementById('oldFileInput').files[0];
-            const oldPastedText = document.getElementById('oldSpecText').value;
-            if (oldFile) {
-                oldContent = await oldFile.text();
-            } else if (oldPastedText) {
-                oldContent = oldPastedText;
-            } else {
-                throw new Error('Please provide the old specification');
-            }
-
-            // Get new spec
-            const newFile = document.getElementById('newFileInput').files[0];
-            const newPastedText = document.getElementById('newSpecText').value;
-            if (newFile) {
-                newContent = await newFile.text();
-            } else if (newPastedText) {
-                newContent = newPastedText;
-            } else {
-                throw new Error('Please provide the new specification');
-            }
-
-            // Send to API
             const formData = new FormData();
             formData.append('old_spec', oldContent);
             formData.append('new_spec', newContent);
@@ -296,18 +423,14 @@
                 throw new Error(errorData.detail || 'Comparison failed');
             }
 
-            const result = await response.json();
-            // Store result in session storage instead of query string
-            sessionStorage.setItem('comparisonResult', JSON.stringify(result));
+            sessionStorage.setItem('comparisonResult', JSON.stringify(await response.json()));
             window.location.href = '/result';
-
         } catch (err) {
-            error.textContent = 'Error: ' + err.message;
-            error.style.display = 'block';
+            error.textContent = `Error: ${err.message}`;
+            error.hidden = false;
         } finally {
-            loading.style.display = 'none';
+            loading.hidden = true;
         }
     });
-
 </script>
 {% endblock %}

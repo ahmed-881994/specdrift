@@ -1,338 +1,216 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "layout.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description"
-    content="Compare Swagger / OpenAPI specs to detect API contract drift and breaking changes before they reach production.">
-  <meta name="robots" content="index, follow">
-  <title>Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift</title>
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift">
-  <meta property="og:description"
-    content="Detect API contract drift, breaking changes, and safe updates by comparing Swagger / OpenAPI specifications.">
-  <meta property="og:image" content="{{ site_url }}/static/favicon.ico">
-  <meta property="og:url" content="{{ site_url }}/">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift">
-  <meta name="twitter:description"
-    content="Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.">
-  <meta name="twitter:image" content="{{ site_url }}/static/favicon.ico">
-  <link rel="canonical" href="{{ site_url }}/">
-  <link rel="stylesheet" href="/static/style.css?v=20260516-guides">
-  <link rel="icon" href="/static/favicon.ico" sizes="any">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebSite",
-        "name": "SpecDrift",
-        "url": "{{ site_url }}/",
-        "description": "SpecDrift compares Swagger and OpenAPI specifications to detect API contract drift and breaking changes."
+{% block title %}Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift{% endblock %}
+{% block meta_description %}Compare Swagger / OpenAPI specs to detect API contract drift and breaking changes before they reach production.{% endblock %}
+{% block og_title %}Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift{% endblock %}
+{% block og_description %}Detect API contract drift, breaking changes, and safe updates by comparing Swagger / OpenAPI specifications.{% endblock %}
+{% block twitter_title %}Compare Swagger / OpenAPI Specs for Breaking Changes | SpecDrift{% endblock %}
+{% block twitter_description %}Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "SpecDrift",
+      "url": "{{ site_url }}/",
+      "description": "SpecDrift compares Swagger and OpenAPI specifications to detect API contract drift and breaking changes."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "SpecDrift",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
       },
-      {
-        "@type": "SoftwareApplication",
-        "name": "SpecDrift",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Any",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        "description": "SpecDrift detects API contract drift by comparing Swagger / OpenAPI specifications and flagging breaking changes.",
-        "url": "{{ site_url }}/"
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "What is API contract drift?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "API contract drift occurs when an API specification changes in ways that break client expectations, such as removed endpoints, new required parameters, or changed response structures."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What's the difference between breaking and non-breaking changes?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Breaking changes force clients to update their code, potentially breaking changes require review, and non-breaking changes are usually safe for existing consumers."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What file formats does SpecDrift support?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "SpecDrift accepts Swagger 2.0 and OpenAPI 3.x specifications in JSON or YAML."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is my data private and secure?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "SpecDrift processes comparisons on the fly without storing uploaded specifications or comparison results."
-            }
-          }
-        ]
-      }
-    ]
-  }
-  </script>
-</head>
+      "description": "SpecDrift detects API contract drift by comparing Swagger / OpenAPI specifications and flagging breaking changes.",
+      "url": "{{ site_url }}/"
+    }
+  ]
+}
+</script>
+{% endblock %}
 
-<body>
-  <header>
-    <span class="brand-title">🔍 SpecDrift</span>
-    <p class="tagline">API Contract Drift Detector</p>
-    <nav class="site-nav" aria-label="Primary navigation">
-      <a href="/">Home</a>
-      <a href="/upload">Compare</a>
-      <a href="/guides">Guides</a>
-      <a href="/about">About</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/contact">Contact</a>
-    </nav>
-  </header>
-  <main class="container">
-    <section class="hero">
-      <h1>Catch Breaking API Changes Before Your Users Do</h1>
-      <p class="subtitle">
-        Compare Swagger / OpenAPI specs and instantly detect breaking changes.
-      </p>
-      <a href="/upload" class="cta">Compare APIs</a>
-    </section>
-
-    <section class="features">
-      <h2>Why SpecDrift?</h2>
-      <ul class="feature-list">
-        <li><span class="icon">🚨</span> Breaking changes detection</li>
-        <li><span class="icon">⚠️</span> Potential risk warnings</li>
-        <li><span class="icon">✅</span> Safe change confirmation</li>
-        <li><span class="icon">🔒</span> Fast and simple. No signup.</li>
-      </ul>
-    </section>
-
-    <section class="use-cases">
-      <h2>Who Uses SpecDrift?</h2>
-      <div class="use-case-grid">
-        <div class="use-case-item">
-          <h3>🏢 API Product Teams</h3>
-          <p>Maintain API contracts across releases, communicate changes clearly to consumers, and prevent breaking production integrations. SpecDrift helps product managers and developers coordinate API evolution strategies.</p>
+{% block content %}
+<section class="repaint-hero">
+    <div class="repaint-grid-bg" aria-hidden="true"></div>
+    <div class="repaint-scanline" aria-hidden="true"></div>
+    <div class="repaint-section-inner repaint-hero__inner">
+        <div class="repaint-kicker-row">
+            <span>// 00.00.00 - origin</span>
+            <span>schema/drift</span>
         </div>
-        
-        <div class="use-case-item">
-          <h3>👨‍💻 Backend Developers</h3>
-          <p>Quickly validate that your API changes won't break existing clients. Review changes before merging pull requests and ensure backward compatibility across versions. Catch issues in development, not production.</p>
+        <div class="repaint-hero__grid">
+            <div class="repaint-hero__copy">
+                <span class="repaint-label">node 01 - surface</span>
+                <h1>Catch <span>breaking</span> API changes before <code>{ your users }</code> do.</h1>
+                <p>
+                    SpecDrift compares two Swagger / OpenAPI specifications and instantly maps every difference:
+                    breaking, risky, and safe changes across paths, parameters, schemas, and auth.
+                </p>
+                <div class="repaint-actions">
+                    <a class="repaint-button repaint-button--primary" href="/upload">
+                        <span aria-hidden="true"></span>Compare APIs
+                    </a>
+                    <a class="repaint-button repaint-button--ghost" href="/guides">Read the guides</a>
+                </div>
+                <dl class="repaint-metrics">
+                    <div>
+                        <dt>Detects</dt>
+                        <dd class="tone-del">Breaking</dd>
+                    </div>
+                    <div>
+                        <dt>Flags</dt>
+                        <dd class="tone-warn">Risky</dd>
+                    </div>
+                    <div>
+                        <dt>Confirms</dt>
+                        <dd class="tone-add">Safe</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <aside class="repaint-diff-card" aria-label="Sample OpenAPI diff">
+                <div class="repaint-card-caption">
+                    <span>fig. 01 - sample diff</span>
+                    <span>read-only</span>
+                </div>
+                <div class="repaint-window repaint-brackets">
+                    <div class="repaint-window__bar">
+                        <div>
+                            <span class="dot tone-del-bg"></span>
+                            <span class="dot tone-warn-bg"></span>
+                            <span class="dot tone-add-bg"></span>
+                            <strong>openapi.yaml</strong>
+                            <span>diff(v1.0 &rarr; v2.0)</span>
+                        </div>
+                        <span><b class="tone-del">-4</b> <b class="tone-add">+6</b> <b class="tone-warn">!1</b></span>
+                    </div>
+                    <div class="repaint-window__summary">
+                        <span class="tone-del">3 Breaking</span>
+                        <span class="tone-warn">1 Risky</span>
+                        <span class="tone-add">2 Safe</span>
+                        <span>/paths · /components/schemas</span>
+                    </div>
+                    <div class="repaint-code-diff">
+                        <div class="line context"><span>··</span><code>paths:</code></div>
+                        <div class="line del"><span>12</span><code>- /users/{id}:</code><em>BREAKING - path renamed</em></div>
+                        <div class="line add"><span>12</span><code>+ /users/{userId}:</code></div>
+                        <div class="line context"><span>13</span><code>  get:</code></div>
+                        <div class="line del"><span>15</span><code>-   name: id</code></div>
+                        <div class="line add"><span>17</span><code>+   required: true</code><em>BREAKING - newly required</em></div>
+                        <div class="line add"><span>18</span><code>+   schema: { type: integer }</code><em>BREAKING - type changed</em></div>
+                        <div class="line section"><span>@@</span><code>@@ components/schemas/User @@</code></div>
+                        <div class="line del"><span>45</span><code>- role: { enum: [admin, user] }</code></div>
+                        <div class="line add"><span>48</span><code>+ role: { enum: [admin, user, guest] }</code><em class="tone-warn">RISKY - enum expanded</em></div>
+                    </div>
+                </div>
+            </aside>
         </div>
-        
-        <div class="use-case-item">
-          <h3>🔄 DevOps & CI/CD Teams</h3>
-          <p>Integrate automated API contract validation into your deployment pipeline. Block releases with breaking changes or require manual approval. Maintain API stability as part of your quality gates.</p>
+    </div>
+</section>
+
+<section class="repaint-band">
+    <div class="repaint-section-inner">
+        <div class="repaint-section-heading">
+            <span>SEC 02 / 06</span>
+            <h2>Every change, classified by <strong>impact</strong>.</h2>
+            <p>
+                SpecDrift reads OpenAPI semantics, not plain text diffs, so endpoint, parameter,
+                request, response, schema, and security changes get the verdict they deserve.
+            </p>
         </div>
-        
-        <div class="use-case-item">
-          <h3>📱 Mobile & Frontend Teams</h3>
-          <p>Stay informed about backend API changes that might affect your applications. Proactively plan updates when breaking changes are introduced and avoid runtime errors in production apps.</p>
+        <div class="repaint-matrix" role="table" aria-label="SpecDrift detection matrix">
+            <div class="matrix-row matrix-head" role="row">
+                <span role="columnheader">Surface</span>
+                <span role="columnheader" class="tone-del">Breaking</span>
+                <span role="columnheader" class="tone-warn">Risky</span>
+                <span role="columnheader" class="tone-add">Safe</span>
+            </div>
+            <div class="matrix-row" role="row">
+                <span>Endpoints</span><span>Removed path · changed method</span><span>Renamed operationId</span><span>New path · added GET</span>
+            </div>
+            <div class="matrix-row" role="row">
+                <span>Parameters</span><span>New required · type change</span><span>Tighter validation rules</span><span>New optional · default added</span>
+            </div>
+            <div class="matrix-row" role="row">
+                <span>Request body</span><span>New required field · field removed</span><span>Stricter schema · regex added</span><span>New optional property</span>
+            </div>
+            <div class="matrix-row" role="row">
+                <span>Responses</span><span>Field removed · type changed</span><span>Status code reassigned</span><span>New headers · additive enum</span>
+            </div>
+            <div class="matrix-row" role="row">
+                <span>Schemas</span><span>Required property added</span><span>Enum value removed</span><span>New nullable property</span>
+            </div>
+            <div class="matrix-row" role="row">
+                <span>Security</span><span>Auth scheme changed</span><span>New OAuth scope required</span><span>Scheme alternative added</span>
+            </div>
         </div>
-        
-        <div class="use-case-item">
-          <h3>🧪 QA & Testing Teams</h3>
-          <p>Identify what needs retesting when APIs change. Focus testing efforts on modified endpoints and validate that breaking changes are properly handled. Reduce regression testing scope for non-breaking changes.</p>
+    </div>
+</section>
+
+<section class="repaint-band repaint-band--muted">
+    <div class="repaint-section-inner">
+        <div class="repaint-section-heading">
+            <span>SEC 03 / 06</span>
+            <h2>Built for the teams who own API change.</h2>
         </div>
-        
-        <div class="use-case-item">
-          <h3>📝 Technical Writers</h3>
-          <p>Track API changes for documentation updates. Identify new endpoints, modified parameters, and deprecated features. Keep API documentation synchronized with actual implementations.</p>
+        <div class="repaint-card-grid">
+            <article class="repaint-info-card repaint-brackets">
+                <span>IDX 01</span>
+                <h3>API Product Teams</h3>
+                <p>Maintain contracts across releases, communicate changes clearly, and prevent production integration failures.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets">
+                <span>IDX 02</span>
+                <h3>Backend Developers</h3>
+                <p>Validate API changes before merging and catch compatibility issues while they are still cheap to fix.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets">
+                <span>IDX 03</span>
+                <h3>DevOps & CI/CD</h3>
+                <p>Turn API contract checks into release gates for safer deployment pipelines.</p>
+            </article>
+            <article class="repaint-info-card repaint-brackets">
+                <span>IDX 04</span>
+                <h3>QA & Documentation</h3>
+                <p>Focus regression testing and documentation updates on the API surfaces that actually changed.</p>
+            </article>
         </div>
-      </div>
-    </section>
+    </div>
+</section>
 
-    <section class="how-it-works">
-      <h2>How SpecDrift Works</h2>
-      <p>SpecDrift analyzes your Swagger 2.0 and OpenAPI 3.0 specifications to identify changes between versions. Our intelligent comparison engine categorizes every difference by its impact on API consumers.</p>
-      
-      <h3>Detection Capabilities</h3>
-      <div>
-        <h4>Endpoint Changes</h4>
-        <ul>
-          <li>Added, removed, or modified API paths</li>
-          <li>HTTP method changes (GET, POST, PUT, DELETE, etc.)</li>
-          <li>Operation summary and description updates</li>
-        </ul>
-
-        <h4>Parameter Changes</h4>
-        <ul>
-          <li>Required vs. optional parameter modifications</li>
-          <li>Parameter type, format, and validation rule changes</li>
-          <li>Query, path, header, and body parameter differences</li>
-          <li>Default value modifications</li>
-        </ul>
-
-        <h4>Request & Response Changes</h4>
-        <ul>
-          <li>Request body schema modifications</li>
-          <li>Response status code changes</li>
-          <li>Response schema structure differences</li>
-          <li>Content-Type and media type changes</li>
-        </ul>
-
-        <h4>Schema & Model Changes</h4>
-        <ul>
-          <li>Property additions, removals, and type changes</li>
-          <li>Required vs. optional property modifications</li>
-          <li>Enum value changes</li>
-          <li>Array item and object property changes</li>
-        </ul>
-
-        <h4>Security & Authentication</h4>
-        <ul>
-          <li>Authentication scheme changes</li>
-          <li>Security requirement modifications</li>
-          <li>OAuth scope changes</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="benefits">
-      <h2>Benefits of Using SpecDrift</h2>
-      <ul>
-        <li><strong>Prevent Production Incidents:</strong> Catch breaking changes before they impact users. Avoid downtime, support tickets, and emergency hotfixes.</li>
-        <li><strong>Faster Development Cycles:</strong> Eliminate manual specification reviews. Get instant feedback on API changes during development.</li>
-        <li><strong>Better Team Communication:</strong> Provide clear, categorized change reports to stakeholders. Everyone understands what changed and why it matters.</li>
-        <li><strong>Improved API Governance:</strong> Enforce API design standards and versioning policies. Maintain consistent API evolution practices across teams.</li>
-        <li><strong>Privacy & Security:</strong> No data storage, no user accounts, no tracking. Your specifications are processed in-memory and immediately discarded.</li>
-        <li><strong>Free & Open Source:</strong> Use SpecDrift freely for personal or commercial projects. Contribute to the open-source project on GitHub.</li>
-      </ul>
-    </section>
-
-    <section class="faq">
-      <h2>Frequently Asked Questions</h2>
-      <div class="faq-container">
-
-        <div class="faq-item">
-          <h3>What is API contract drift?</h3>
-          <p>API contract drift occurs when an API specification changes in ways that break client expectations. This
-            happens when endpoints are removed, required parameters are added, or response structures change
-            unexpectedly. SpecDrift detects these drifts automatically.</p>
+<section class="repaint-band">
+    <div class="repaint-section-inner repaint-guides-preview">
+        <div class="repaint-section-heading">
+            <span>SEC 04 / 06</span>
+            <h2>Field notes for safer API releases.</h2>
         </div>
-
-        <div class="faq-item">
-          <h3>What's the difference between breaking and non-breaking changes?</h3>
-          <p><strong>Breaking changes</strong> force clients to update their code immediately (e.g., removing an
-            endpoint, adding a required field). <strong>Potentially breaking changes</strong> might cause issues
-            depending on implementation (e.g., changing response status codes). <strong>Non-breaking changes</strong>
-            are safe—like adding optional fields or new endpoints.</p>
+        <div class="repaint-guide-list">
+            <a href="/guides/openapi-breaking-changes">
+                <span>IDX 01</span>
+                <strong>OpenAPI Breaking Changes</strong>
+                <small>Which specification changes break clients and which are usually safe.</small>
+            </a>
+            <a href="/guides/api-versioning-checklist">
+                <span>IDX 02</span>
+                <strong>API Versioning Checklist</strong>
+                <small>A practical checklist before shipping contract changes.</small>
+            </a>
+            <a href="/guides/api-contract-testing-ci">
+                <span>IDX 03</span>
+                <strong>Contract Testing in CI</strong>
+                <small>Turn spec comparison into an automated quality gate.</small>
+            </a>
         </div>
-
-        <div class="faq-item">
-          <h3>How do I use SpecDrift?</h3>
-          <p>Upload or paste two Swagger / OpenAPI specifications, click "Compare Specs," and SpecDrift instantly shows
-            all changes categorized by risk level.</p>
+        <div class="repaint-actions">
+            <a class="repaint-button repaint-button--primary" href="/upload">Start comparing</a>
         </div>
-
-        <div class="faq-item">
-          <h3>What file formats does SpecDrift support?</h3>
-          <p>SpecDrift accepts Swagger 2.0 and OpenAPI 3.0, and compatible formats in JSON or YAML. You can paste specs
-            directly or upload files. You can even compare a Swagger 2.0 specification to an OpenAPI 3.0 specification.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Is my data private and secure?</h3>
-          <p>Yes. SpecDrift processes comparisons on-the-fly without storing your specifications. No signup, no
-            tracking. Your data stays with you.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Why should I use SpecDrift instead of manual review?</h3>
-          <p>Manual review is error-prone and slow, especially with large or complex APIs. SpecDrift automatically flags
-            issues in seconds, catches edge cases</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Can I use SpecDrift in my CI/CD pipeline? <span class="badge-dev">In Development</span></h3>
-          <p>SpecDrift's API endpoint accepts spec comparisons programmatically, making it ideal for automated API
-            validation during deployments.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>What happens when endpoints or fields are removed?</h3>
-          <p>SpecDrift flags removed endpoints and required fields as <strong>breaking changes</strong>. Clients
-            depending on these will fail unless they update.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Does SpecDrift work with both JSON and YAML?</h3>
-          <p>Yes! SpecDrift supports both JSON and YAML formats for Swagger 2.0 and OpenAPI 3.0 specifications. You can even compare a JSON spec against a YAML spec—the format doesn't matter.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>How accurate is SpecDrift's analysis?</h3>
-          <p>SpecDrift uses comprehensive rule-based analysis specifically designed for OpenAPI specifications. It understands API semantics, not just text differences, ensuring accurate categorization of changes by their actual impact on API consumers.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Can I compare specifications from different API versions?</h3>
-          <p>Absolutely. SpecDrift is designed to compare any two OpenAPI specifications, whether they're different versions of the same API, alternative designs, or completely different APIs. The tool works best when comparing versions of the same API.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>What should I do if I find breaking changes?</h3>
-          <p>Consider these options: (1) Revert the breaking changes, (2) Create a new major version of your API, (3) Provide a migration path and deprecation timeline, (4) Add backward-compatible alternatives alongside the new implementation.</p>
-        </div>
-
-      </div>
-    </section>
-
-    <section class="getting-started">
-      <h2>Getting Started with SpecDrift</h2>
-      <p>Ready to compare your API specifications? Follow these simple steps:</p>
-      <ol>
-        <li>Prepare your two API specifications (old version and new version) in Swagger 2.0 or OpenAPI 3.0 format</li>
-        <li>Visit the <a href="/upload">comparison page</a> and either upload your files or paste the content directly</li>
-        <li>Click "Compare Specs" to run the analysis</li>
-        <li>Review the categorized results: breaking changes, potentially breaking changes, and non-breaking changes</li>
-        <li>Take appropriate action based on the findings—update documentation, notify API consumers, or adjust your implementation</li>
-      </ol>
-      <p>
-        <a href="/upload" class="cta">Start Comparing Now</a>
-      </p>
-    </section>
-
-    <section class="guide-preview">
-      <h2>API Compatibility Guides</h2>
-      <p>Learn how to review OpenAPI changes, version APIs safely, and add contract checks to your release workflow.</p>
-      <div class="guide-grid">
-        <a class="guide-card" href="/guides/openapi-breaking-changes">
-          <h3>OpenAPI Breaking Changes</h3>
-          <p>Understand which specification changes break clients and which are usually safe.</p>
-        </a>
-        <a class="guide-card" href="/guides/api-versioning-checklist">
-          <h3>API Versioning Checklist</h3>
-          <p>Use a practical release checklist before shipping contract changes.</p>
-        </a>
-        <a class="guide-card" href="/guides/api-contract-testing-ci">
-          <h3>Contract Testing in CI</h3>
-          <p>Turn API spec comparisons into an automated quality gate.</p>
-        </a>
-      </div>
-    </section>
-
-    <footer>
-      Built for developers.
-      <a href="/guides">Guides</a>
-      <a href="/about">About</a>
-      <a href="/terms">Terms</a>
-      <a href="/contact">Contact</a>
-      <a href="/privacy">Privacy Policy</a>
-    </footer>
-  </main>
-</body>
-
-</html>
+    </div>
+</section>
+{% endblock %}
