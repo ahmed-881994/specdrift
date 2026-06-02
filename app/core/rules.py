@@ -21,6 +21,7 @@ BREAKING_RULES = {
     "required_request_body_added": "Required request body added",
     "request_body_made_required": "Request body made required",
     "enum_value_removed": "Enum value removed",
+    "constraint_made_stricter": "Schema constraint made stricter",
     "success_response_removed": "Success response (2xx) removed",
 }
 
@@ -29,6 +30,8 @@ POTENTIALLY_BREAKING_RULES = {
     "non_2xx_response_removed": "Non-2xx response removed",
     "enum_value_added": "Enum value added",
     "default_value_removed": "Default value removed",
+    "default_value_changed": "Default value changed",
+    "constraint_changed": "Schema constraint changed",
     "parameter_made_optional": "Parameter made optional",
     "field_made_optional": "Field made optional",
     "request_body_made_optional": "Request body made optional",
@@ -43,6 +46,8 @@ NON_BREAKING_RULES = {
     "optional_request_body_added": "New optional request body",
     "response_field_added": "New response field",
     "response_added": "New response status",
+    "default_value_added": "Default value added",
+    "constraint_made_looser": "Schema constraint made less restrictive",
     "metadata_changed": "Metadata-only changes",
 }
 
@@ -50,10 +55,10 @@ NON_BREAKING_RULES = {
 def classify_change(rule_type: str) -> str:
     """
     Classify a change based on its rule type.
-    
+
     Args:
         rule_type: The type of change/rule
-        
+
     Returns:
         Classification: "breaking", "potentially_breaking", or "non_breaking"
     """
@@ -71,16 +76,16 @@ def classify_change(rule_type: str) -> str:
 def get_rule_message(rule_type: str) -> str:
     """
     Get human-readable message for a rule.
-    
+
     Args:
         rule_type: The type of rule
-        
+
     Returns:
         Human-readable message
     """
     return (
-        BREAKING_RULES.get(rule_type) or
-        POTENTIALLY_BREAKING_RULES.get(rule_type) or
-        NON_BREAKING_RULES.get(rule_type) or
-        "Unknown change"
+        BREAKING_RULES.get(rule_type)
+        or POTENTIALLY_BREAKING_RULES.get(rule_type)
+        or NON_BREAKING_RULES.get(rule_type)
+        or "Unknown change"
     )

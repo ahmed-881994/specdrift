@@ -399,6 +399,67 @@ class Classifier:
             )
 
     @staticmethod
+    def classify_schema_constraint_change(
+        path: str,
+        method: str,
+        field_name: str,
+        change_type: str,
+        location: str,
+        keyword: str,
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """
+        Classify JSON Schema keyword and constraint changes.
+
+        Args:
+            path: The API path
+            method: The HTTP method
+            field_name: The field or schema node name
+            change_type: Type of constraint change
+            location: Location of the schema change
+            keyword: JSON Schema keyword that changed
+            old_value: Previous keyword value
+            new_value: New keyword value
+            details: Extra change details
+
+        Returns:
+            Classified change
+        """
+        rule_by_change_type = {
+            "enum_value_removed": "enum_value_removed",
+            "enum_value_added": "enum_value_added",
+            "default_removed": "default_value_removed",
+            "default_added": "default_value_added",
+            "default_changed": "default_value_changed",
+            "made_stricter": "constraint_made_stricter",
+            "made_looser": "constraint_made_looser",
+            "changed": "constraint_changed",
+        }
+        rule_type = rule_by_change_type.get(change_type, "constraint_changed")
+
+        change_details = Classifier._merge_details(
+            {
+                "location": location,
+                "keyword": keyword,
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category="schema_constraint",
+            path=path,
+            method=method.upper(),
+            field_name=field_name,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
     def classify_response_change(
         path: str,
         method: str,

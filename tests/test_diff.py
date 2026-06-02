@@ -747,9 +747,7 @@ class TestDiffer:
                                 "application/json": {
                                     "schema": {
                                         "type": "object",
-                                        "properties": {
-                                            "nickname": {"type": "string"}
-                                        },
+                                        "properties": {"nickname": {"type": "string"}},
                                     }
                                 }
                             }
@@ -1191,6 +1189,440 @@ class TestDiffer:
         assert change.details["schema_path"] == (
             "#/paths/~1users/post/requestBody/content/application~1json/schema/"
             "allOf/0/properties/id/type"
+        )
+
+    def test_detect_request_enum_value_removed(self):
+        """Test detection of removed enum values."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {
+                                                "type": "string",
+                                                "enum": ["active", "inactive"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {
+                                                "type": "string",
+                                                "enum": ["active"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "breaking"
+        assert change.field_name == "status"
+        assert change.message == "Enum value removed"
+        assert change.details["keyword"] == "enum"
+        assert change.details["old_value"] == "inactive"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/"
+            "properties/status/enum"
+        )
+
+    def test_detect_enum_value_added(self):
+        """Test detection of added enum values."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {
+                                                "type": "string",
+                                                "enum": ["active"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {
+                                                "type": "string",
+                                                "enum": ["active", "inactive"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "potentially_breaking"
+        assert change.message == "Enum value added"
+        assert change.details["new_value"] == "inactive"
+
+    def test_detect_default_value_removed(self):
+        """Test detection of removed defaults."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "role": {
+                                                "type": "string",
+                                                "default": "reader",
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {"role": {"type": "string"}},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "potentially_breaking"
+        assert change.message == "Default value removed"
+        assert change.details["keyword"] == "default"
+        assert change.details["old_value"] == "reader"
+
+    def test_detect_request_max_length_made_stricter(self):
+        """Test detection of stricter validation constraints."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "maxLength": 100,
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "maxLength": 50,
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "breaking"
+        assert change.message == "Schema constraint made stricter"
+        assert change.details["keyword"] == "maxLength"
+        assert change.details["old_value"] == 100
+        assert change.details["new_value"] == 50
+
+    def test_detect_request_minimum_made_looser(self):
+        """Test detection of looser validation constraints."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "age",
+                                "in": "query",
+                                "schema": {"type": "integer", "minimum": 18},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "age",
+                                "in": "query",
+                                "schema": {"type": "integer", "minimum": 13},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "non_breaking"
+        assert change.message == "Schema constraint made less restrictive"
+        assert change.details["location"] == "parameter_query"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/get/parameters/query/age/schema/minimum"
+        )
+
+    def test_detect_pattern_constraint_changed(self):
+        """Test detection of ambiguous constraint changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "code": {
+                                                "type": "string",
+                                                "pattern": "^[A-Z]+$",
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "code": {
+                                                "type": "string",
+                                                "pattern": "^[0-9]+$",
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "potentially_breaking"
+        assert change.message == "Schema constraint changed"
+        assert change.details["keyword"] == "pattern"
+
+    def test_detect_nested_array_item_constraint_change(self):
+        """Test detection of constraints inside recursive schema nodes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "tags": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "minLength": 2,
+                                                },
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "tags": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string",
+                                                    "minLength": 4,
+                                                },
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema_constraint")
+        assert change.type == "breaking"
+        assert change.field_name == "tags[]"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/"
+            "properties/tags/items/minLength"
         )
 
     def test_detect_removed_response(self):

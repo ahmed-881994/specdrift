@@ -5,6 +5,7 @@ Detects breaking, potentially breaking, and non-breaking changes
 between two API specifications.
 """
 
+import json
 from typing import Dict, Any, List, Optional
 from app.models.change import Change, DiffResult
 from app.core.classifier import Classifier
@@ -14,6 +15,43 @@ from app.core.schema_utils import schema_type_set
 
 class Differ:
     """Compares two API specifications and detects changes."""
+
+    CONSTRAINT_KEYWORDS = (
+        "const",
+        "default",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "format",
+        "minItems",
+        "maxItems",
+        "uniqueItems",
+        "minProperties",
+        "maxProperties",
+        "minContains",
+        "maxContains",
+    )
+    INCREASE_STRICTER_KEYWORDS = {
+        "minimum",
+        "exclusiveMinimum",
+        "minLength",
+        "minItems",
+        "minProperties",
+        "minContains",
+    }
+    DECREASE_STRICTER_KEYWORDS = {
+        "maximum",
+        "exclusiveMaximum",
+        "maxLength",
+        "maxItems",
+        "maxProperties",
+        "maxContains",
+    }
 
     def __init__(self):
         self.changes: List[Change] = []
@@ -285,6 +323,16 @@ class Differ:
                             )
                         )
 
+                    self._diff_schema_constraints(
+                        path,
+                        method,
+                        old_schema,
+                        new_schema,
+                        f"parameter_{param_in}",
+                        f"{self._parameter_pointer(path, method, param_in, param_name)}/schema",
+                        param_name,
+                    )
+
                     # Check required status change
                     old_required = old_param.get("required", False)
                     new_required = new_param.get("required", False)
@@ -453,13 +501,19 @@ class Differ:
                     old_type=old_type_value,
                     new_type=new_type_value,
                     details={
-                        "schema_path": f"{schema_path}/type" if schema_path else "#/type",
+                        "schema_path": (
+                            f"{schema_path}/type" if schema_path else "#/type"
+                        ),
                         "keyword": "type",
                         "old_value": old_type_value,
                         "new_value": new_type_value,
                     },
                 )
             )
+
+        self._diff_schema_constraints(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
 
         old_props = old_schema.get("properties", {})
         new_props = new_schema.get("properties", {})
@@ -569,6 +623,250 @@ class Differ:
         self._diff_composition(
             path, method, old_schema, new_schema, location, schema_path, field_name
         )
+
+    def _diff_schema_constraints(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect JSON Schema enum, default, and validation constraint changes."""
+        self._diff_enum_constraint(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
+
+        for keyword in self.CONSTRAINT_KEYWORDS:
+            if keyword == "default":
+                self._diff_default_constraint(
+                    path,
+                    method,
+                    old_schema,
+                    new_schema,
+                    location,
+                    schema_path,
+                    field_name,
+                )
+                continue
+
+            old_has_keyword = keyword in old_schema
+            new_has_keyword = keyword in new_schema
+            old_value = old_schema.get(keyword)
+            new_value = new_schema.get(keyword)
+
+            if not old_has_keyword and not new_has_keyword:
+                continue
+            if old_has_keyword and new_has_keyword and old_value == new_value:
+                continue
+
+            change_type = self._classify_constraint_direction(
+                keyword, old_has_keyword, old_value, new_has_keyword, new_value
+            )
+            self._append_schema_constraint_change(
+                path,
+                method,
+                field_name,
+                change_type,
+                location,
+                keyword,
+                old_value if old_has_keyword else None,
+                new_value if new_has_keyword else None,
+                self._keyword_pointer(schema_path, keyword),
+            )
+
+    def _diff_enum_constraint(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect enum value additions and removals."""
+        old_enum = old_schema.get("enum")
+        new_enum = new_schema.get("enum")
+        if not isinstance(old_enum, list) and not isinstance(new_enum, list):
+            return
+
+        if not isinstance(old_enum, list):
+            self._append_schema_constraint_change(
+                path,
+                method,
+                field_name,
+                "made_stricter",
+                location,
+                "enum",
+                None,
+                new_enum,
+                self._keyword_pointer(schema_path, "enum"),
+            )
+            return
+
+        if not isinstance(new_enum, list):
+            self._append_schema_constraint_change(
+                path,
+                method,
+                field_name,
+                "made_looser",
+                location,
+                "enum",
+                old_enum,
+                None,
+                self._keyword_pointer(schema_path, "enum"),
+            )
+            return
+
+        old_values = self._comparable_values(old_enum)
+        new_values = self._comparable_values(new_enum)
+
+        for key, value in old_values.items():
+            if key not in new_values:
+                self._append_schema_constraint_change(
+                    path,
+                    method,
+                    field_name,
+                    "enum_value_removed",
+                    location,
+                    "enum",
+                    value,
+                    None,
+                    self._keyword_pointer(schema_path, "enum"),
+                )
+
+        for key, value in new_values.items():
+            if key not in old_values:
+                self._append_schema_constraint_change(
+                    path,
+                    method,
+                    field_name,
+                    "enum_value_added",
+                    location,
+                    "enum",
+                    None,
+                    value,
+                    self._keyword_pointer(schema_path, "enum"),
+                )
+
+    def _diff_default_constraint(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect default value additions, removals, and changes."""
+        old_has_default = "default" in old_schema
+        new_has_default = "default" in new_schema
+
+        if not old_has_default and not new_has_default:
+            return
+
+        old_value = old_schema.get("default")
+        new_value = new_schema.get("default")
+        if old_has_default and new_has_default and old_value == new_value:
+            return
+
+        if old_has_default and not new_has_default:
+            change_type = "default_removed"
+        elif new_has_default and not old_has_default:
+            change_type = "default_added"
+        else:
+            change_type = "default_changed"
+
+        self._append_schema_constraint_change(
+            path,
+            method,
+            field_name,
+            change_type,
+            location,
+            "default",
+            old_value if old_has_default else None,
+            new_value if new_has_default else None,
+            self._keyword_pointer(schema_path, "default"),
+        )
+
+    def _append_schema_constraint_change(
+        self,
+        path: str,
+        method: str,
+        field_name: str,
+        change_type: str,
+        location: str,
+        keyword: str,
+        old_value: Any,
+        new_value: Any,
+        schema_path: str,
+    ) -> None:
+        """Append a schema constraint change with consistent details."""
+        self.changes.append(
+            Classifier.classify_schema_constraint_change(
+                path,
+                method,
+                field_name,
+                change_type,
+                location,
+                keyword,
+                old_value,
+                new_value,
+                details={"schema_path": schema_path},
+            )
+        )
+
+    def _classify_constraint_direction(
+        self,
+        keyword: str,
+        old_has_keyword: bool,
+        old_value: Any,
+        new_has_keyword: bool,
+        new_value: Any,
+    ) -> str:
+        """Classify whether a validation constraint became stricter or looser."""
+        if not old_has_keyword and new_has_keyword:
+            return "made_stricter"
+        if old_has_keyword and not new_has_keyword:
+            return "made_looser"
+
+        if keyword in self.INCREASE_STRICTER_KEYWORDS:
+            return self._compare_number_direction(
+                old_value, new_value, increase_stricter=True
+            )
+        if keyword in self.DECREASE_STRICTER_KEYWORDS:
+            return self._compare_number_direction(
+                old_value, new_value, increase_stricter=False
+            )
+
+        if keyword == "uniqueItems":
+            if old_value is False and new_value is True:
+                return "made_stricter"
+            if old_value is True and new_value is False:
+                return "made_looser"
+
+        return "changed"
+
+    @staticmethod
+    def _compare_number_direction(
+        old_value: Any, new_value: Any, increase_stricter: bool
+    ) -> str:
+        """Classify numeric constraint direction when both values are comparable."""
+        if not isinstance(old_value, (int, float)) or not isinstance(
+            new_value, (int, float)
+        ):
+            return "changed"
+        if old_value == new_value:
+            return "changed"
+
+        increased = new_value > old_value
+        if increased == increase_stricter:
+            return "made_stricter"
+        return "made_looser"
 
     def _diff_array_items(
         self,
@@ -786,7 +1084,11 @@ class Differ:
                 map_path,
                 map_field,
             )
-        elif old_has_additional and new_has_additional and old_additional != new_additional:
+        elif (
+            old_has_additional
+            and new_has_additional
+            and old_additional != new_additional
+        ):
             self.changes.append(
                 Classifier.classify_schema_change(
                     path,
@@ -903,7 +1205,11 @@ class Differ:
         elif old_not != new_not:
             if old_not is None and new_not is None:
                 return
-            change_type = "added" if old_not is None else "removed" if new_not is None else "type_changed"
+            change_type = (
+                "added"
+                if old_not is None
+                else "removed" if new_not is None else "type_changed"
+            )
             self.changes.append(
                 Classifier.classify_schema_change(
                     path,
@@ -1106,6 +1412,26 @@ class Differ:
         if not schema_path:
             return f"#/properties/{cls._json_pointer_escape(prop_name)}"
         return f"{schema_path}/properties/{cls._json_pointer_escape(prop_name)}"
+
+    @classmethod
+    def _keyword_pointer(cls, schema_path: str, keyword: str) -> str:
+        """Return a pointer for a keyword under a schema."""
+        escaped_keyword = cls._json_pointer_escape(keyword)
+        if not schema_path:
+            return f"#/{escaped_keyword}"
+        return f"{schema_path}/{escaped_keyword}"
+
+    @staticmethod
+    def _comparable_values(values: List[Any]) -> Dict[str, Any]:
+        """Return enum values keyed by stable JSON representations."""
+        comparable = {}
+        for value in values:
+            try:
+                key = json.dumps(value, sort_keys=True, separators=(",", ":"))
+            except TypeError:
+                key = repr(value)
+            comparable[key] = value
+        return comparable
 
     @staticmethod
     def _field_path(parent: str, child: str) -> str:
