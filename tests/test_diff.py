@@ -854,6 +854,345 @@ class TestDiffer:
         assert change.details["old_value"] == "string"
         assert change.details["new_value"] == "integer"
 
+    def test_detect_nested_object_field_removal(self):
+        """Test recursive detection of removed nested object fields."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "address": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "city": {"type": "string"},
+                                                    "country": {"type": "string"},
+                                                },
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "address": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "country": {"type": "string"}
+                                                },
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "address.city")
+        assert change.type == "breaking"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/"
+            "properties/address/properties/city"
+        )
+
+    def test_detect_array_item_type_change(self):
+        """Test recursive detection of array item schema changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "tags": {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "tags": {
+                                                "type": "array",
+                                                "items": {"type": "integer"},
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "tags[]")
+        assert change.type == "breaking"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/"
+            "properties/tags/items/type"
+        )
+        assert change.details["old_value"] == "string"
+        assert change.details["new_value"] == "integer"
+
+    def test_detect_prefix_item_type_change(self):
+        """Test recursive detection of tuple-style prefixItems changes."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/points": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "point": {
+                                                "type": "array",
+                                                "prefixItems": [
+                                                    {"type": "number"},
+                                                    {"type": "number"},
+                                                ],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/points": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "point": {
+                                                "type": "array",
+                                                "prefixItems": [
+                                                    {"type": "number"},
+                                                    {"type": "string"},
+                                                ],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "point[1]")
+        assert change.type == "breaking"
+        assert change.details["schema_path"] == (
+            "#/paths/~1points/post/requestBody/content/application~1json/schema/"
+            "properties/point/prefixItems/1/type"
+        )
+
+    def test_detect_additional_properties_value_type_change(self):
+        """Test recursive detection of map value schema changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "metadata": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "string"
+                                                },
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "metadata": {
+                                                "type": "object",
+                                                "additionalProperties": {
+                                                    "type": "integer"
+                                                },
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "metadata.*")
+        assert change.type == "breaking"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/"
+            "properties/metadata/additionalProperties/type"
+        )
+
+    def test_detect_composed_schema_branch_change(self):
+        """Test recursive detection inside composed schema branches."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "allOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "string"}
+                                                },
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "allOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {"type": "integer"}
+                                                },
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "schema.allOf[0].id")
+        assert change.type == "breaking"
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/"
+            "allOf/0/properties/id/type"
+        )
+
     def test_detect_removed_response(self):
         """Test detection of removed responses."""
         old_spec = {

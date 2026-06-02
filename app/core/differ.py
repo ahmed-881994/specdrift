@@ -434,8 +434,33 @@ class Differ:
         new_schema: Dict[str, Any],
         location: str = "request_body",
         schema_path: str = "",
+        field_name: str = "schema",
     ) -> None:
-        """Detect schema property changes."""
+        """Recursively detect schema changes."""
+        old_type = schema_type_set(old_schema)
+        new_type = schema_type_set(new_schema)
+
+        if old_type != new_type and old_type and new_type:
+            old_type_value = self._format_schema_type(old_type)
+            new_type_value = self._format_schema_type(new_type)
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    field_name,
+                    "type_changed",
+                    location,
+                    old_type=old_type_value,
+                    new_type=new_type_value,
+                    details={
+                        "schema_path": f"{schema_path}/type" if schema_path else "#/type",
+                        "keyword": "type",
+                        "old_value": old_type_value,
+                        "new_value": new_type_value,
+                    },
+                )
+            )
+
         old_props = old_schema.get("properties", {})
         new_props = new_schema.get("properties", {})
         old_required = set(old_schema.get("required", []))
@@ -448,7 +473,7 @@ class Differ:
                     Classifier.classify_schema_change(
                         path,
                         method,
-                        prop_name,
+                        self._field_path(field_name, prop_name),
                         "removed",
                         location,
                         details={
@@ -468,7 +493,7 @@ class Differ:
                     Classifier.classify_schema_change(
                         path,
                         method,
-                        prop_name,
+                        self._field_path(field_name, prop_name),
                         "added",
                         location,
                         is_required,
@@ -484,40 +509,17 @@ class Differ:
         # Changed property types
         for prop_name in old_props:
             if prop_name in new_props:
-                old_prop_type = schema_type_set(old_props[prop_name])
-                new_prop_type = schema_type_set(new_props[prop_name])
-
-                if old_prop_type != new_prop_type and old_prop_type and new_prop_type:
-                    old_type_value = self._format_schema_type(old_prop_type)
-                    new_type_value = self._format_schema_type(new_prop_type)
-                    self.changes.append(
-                        Classifier.classify_schema_change(
-                            path,
-                            method,
-                            prop_name,
-                            "type_changed",
-                            location,
-                            old_type=old_type_value,
-                            new_type=new_type_value,
-                            details={
-                                "schema_path": f"{self._schema_property_pointer(schema_path, prop_name)}/type",
-                                "keyword": "type",
-                                "old_value": old_type_value,
-                                "new_value": new_type_value,
-                            },
-                        )
-                    )
-
                 # Check if property was made required or optional
                 was_required = prop_name in old_required
                 is_required = prop_name in new_required
+                nested_field_name = self._field_path(field_name, prop_name)
 
                 if not was_required and is_required:
                     self.changes.append(
                         Classifier.classify_schema_change(
                             path,
                             method,
-                            prop_name,
+                            nested_field_name,
                             "made_required",
                             location,
                             details={
@@ -533,7 +535,7 @@ class Differ:
                         Classifier.classify_schema_change(
                             path,
                             method,
-                            prop_name,
+                            nested_field_name,
                             "made_optional",
                             location,
                             details={
@@ -544,6 +546,379 @@ class Differ:
                             },
                         )
                     )
+
+                self._diff_schema(
+                    path,
+                    method,
+                    old_props[prop_name],
+                    new_props[prop_name],
+                    location,
+                    self._schema_property_pointer(schema_path, prop_name),
+                    nested_field_name,
+                )
+
+        self._diff_array_items(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
+        self._diff_prefix_items(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
+        self._diff_additional_properties(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
+        self._diff_composition(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
+
+    def _diff_array_items(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect changes in homogeneous array item schemas."""
+        old_has_items = "items" in old_schema
+        new_has_items = "items" in new_schema
+        item_field = f"{field_name}[]"
+        item_path = f"{schema_path}/items" if schema_path else "#/items"
+
+        if old_has_items and not new_has_items:
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    item_field,
+                    "removed",
+                    location,
+                    details={
+                        "schema_path": item_path,
+                        "keyword": "items",
+                        "old_value": old_schema["items"],
+                    },
+                )
+            )
+            return
+
+        if new_has_items and not old_has_items:
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    item_field,
+                    "added",
+                    location,
+                    details={
+                        "schema_path": item_path,
+                        "keyword": "items",
+                        "new_value": new_schema["items"],
+                    },
+                )
+            )
+            return
+
+        old_items = old_schema.get("items")
+        new_items = new_schema.get("items")
+        if isinstance(old_items, dict) and isinstance(new_items, dict):
+            self._diff_schema(
+                path, method, old_items, new_items, location, item_path, item_field
+            )
+        elif old_has_items and new_has_items and old_items != new_items:
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    item_field,
+                    "type_changed",
+                    location,
+                    details={
+                        "schema_path": item_path,
+                        "keyword": "items",
+                        "old_value": old_items,
+                        "new_value": new_items,
+                    },
+                )
+            )
+
+    def _diff_prefix_items(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect changes in tuple-style array item schemas."""
+        old_items = old_schema.get("prefixItems", [])
+        new_items = new_schema.get("prefixItems", [])
+        if not isinstance(old_items, list) or not isinstance(new_items, list):
+            return
+
+        prefix_path = f"{schema_path}/prefixItems" if schema_path else "#/prefixItems"
+        common_length = min(len(old_items), len(new_items))
+
+        for index in range(common_length):
+            item_field = f"{field_name}[{index}]"
+            item_path = f"{prefix_path}/{index}"
+            old_item = old_items[index]
+            new_item = new_items[index]
+            if isinstance(old_item, dict) and isinstance(new_item, dict):
+                self._diff_schema(
+                    path, method, old_item, new_item, location, item_path, item_field
+                )
+            elif old_item != new_item:
+                self.changes.append(
+                    Classifier.classify_schema_change(
+                        path,
+                        method,
+                        item_field,
+                        "type_changed",
+                        location,
+                        details={
+                            "schema_path": item_path,
+                            "keyword": "prefixItems",
+                            "old_value": old_item,
+                            "new_value": new_item,
+                        },
+                    )
+                )
+
+        for index in range(common_length, len(old_items)):
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    f"{field_name}[{index}]",
+                    "removed",
+                    location,
+                    details={
+                        "schema_path": f"{prefix_path}/{index}",
+                        "keyword": "prefixItems",
+                        "old_value": old_items[index],
+                    },
+                )
+            )
+
+        for index in range(common_length, len(new_items)):
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    f"{field_name}[{index}]",
+                    "added",
+                    location,
+                    details={
+                        "schema_path": f"{prefix_path}/{index}",
+                        "keyword": "prefixItems",
+                        "new_value": new_items[index],
+                    },
+                )
+            )
+
+    def _diff_additional_properties(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect changes in map/dictionary value schemas."""
+        old_has_additional = "additionalProperties" in old_schema
+        new_has_additional = "additionalProperties" in new_schema
+        map_field = f"{field_name}.*"
+        map_path = (
+            f"{schema_path}/additionalProperties"
+            if schema_path
+            else "#/additionalProperties"
+        )
+
+        if old_has_additional and not new_has_additional:
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    map_field,
+                    "removed",
+                    location,
+                    details={
+                        "schema_path": map_path,
+                        "keyword": "additionalProperties",
+                        "old_value": old_schema["additionalProperties"],
+                    },
+                )
+            )
+            return
+
+        if new_has_additional and not old_has_additional:
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    map_field,
+                    "added",
+                    location,
+                    details={
+                        "schema_path": map_path,
+                        "keyword": "additionalProperties",
+                        "new_value": new_schema["additionalProperties"],
+                    },
+                )
+            )
+            return
+
+        old_additional = old_schema.get("additionalProperties")
+        new_additional = new_schema.get("additionalProperties")
+        if isinstance(old_additional, dict) and isinstance(new_additional, dict):
+            self._diff_schema(
+                path,
+                method,
+                old_additional,
+                new_additional,
+                location,
+                map_path,
+                map_field,
+            )
+        elif old_has_additional and new_has_additional and old_additional != new_additional:
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    map_field,
+                    "type_changed",
+                    location,
+                    details={
+                        "schema_path": map_path,
+                        "keyword": "additionalProperties",
+                        "old_value": old_additional,
+                        "new_value": new_additional,
+                    },
+                )
+            )
+
+    def _diff_composition(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Detect changes in composed schema branches."""
+        for keyword in ("allOf", "oneOf", "anyOf"):
+            old_branches = old_schema.get(keyword, [])
+            new_branches = new_schema.get(keyword, [])
+            if not isinstance(old_branches, list) or not isinstance(new_branches, list):
+                continue
+
+            keyword_path = f"{schema_path}/{keyword}" if schema_path else f"#/{keyword}"
+            common_length = min(len(old_branches), len(new_branches))
+
+            for index in range(common_length):
+                branch_field = f"{field_name}.{keyword}[{index}]"
+                branch_path = f"{keyword_path}/{index}"
+                old_branch = old_branches[index]
+                new_branch = new_branches[index]
+                if isinstance(old_branch, dict) and isinstance(new_branch, dict):
+                    self._diff_schema(
+                        path,
+                        method,
+                        old_branch,
+                        new_branch,
+                        location,
+                        branch_path,
+                        branch_field,
+                    )
+                elif old_branch != new_branch:
+                    self.changes.append(
+                        Classifier.classify_schema_change(
+                            path,
+                            method,
+                            branch_field,
+                            "type_changed",
+                            location,
+                            details={
+                                "schema_path": branch_path,
+                                "keyword": keyword,
+                                "old_value": old_branch,
+                                "new_value": new_branch,
+                            },
+                        )
+                    )
+
+            for index in range(common_length, len(old_branches)):
+                self.changes.append(
+                    Classifier.classify_schema_change(
+                        path,
+                        method,
+                        f"{field_name}.{keyword}[{index}]",
+                        "removed",
+                        location,
+                        details={
+                            "schema_path": f"{keyword_path}/{index}",
+                            "keyword": keyword,
+                            "old_value": old_branches[index],
+                        },
+                    )
+                )
+
+            for index in range(common_length, len(new_branches)):
+                self.changes.append(
+                    Classifier.classify_schema_change(
+                        path,
+                        method,
+                        f"{field_name}.{keyword}[{index}]",
+                        "added",
+                        location,
+                        details={
+                            "schema_path": f"{keyword_path}/{index}",
+                            "keyword": keyword,
+                            "new_value": new_branches[index],
+                        },
+                    )
+                )
+
+        old_not = old_schema.get("not")
+        new_not = new_schema.get("not")
+        not_path = f"{schema_path}/not" if schema_path else "#/not"
+        if isinstance(old_not, dict) and isinstance(new_not, dict):
+            self._diff_schema(
+                path,
+                method,
+                old_not,
+                new_not,
+                location,
+                not_path,
+                f"{field_name}.not",
+            )
+        elif old_not != new_not:
+            if old_not is None and new_not is None:
+                return
+            change_type = "added" if old_not is None else "removed" if new_not is None else "type_changed"
+            self.changes.append(
+                Classifier.classify_schema_change(
+                    path,
+                    method,
+                    f"{field_name}.not",
+                    change_type,
+                    location,
+                    details={
+                        "schema_path": not_path,
+                        "keyword": "not",
+                        "old_value": old_not,
+                        "new_value": new_not,
+                    },
+                )
+            )
 
     @staticmethod
     def _get_primary_content_type(body: Dict[str, Any]) -> str:
@@ -731,3 +1106,10 @@ class Differ:
         if not schema_path:
             return f"#/properties/{cls._json_pointer_escape(prop_name)}"
         return f"{schema_path}/properties/{cls._json_pointer_escape(prop_name)}"
+
+    @staticmethod
+    def _field_path(parent: str, child: str) -> str:
+        """Return a compact dotted field path for result display."""
+        if not parent or parent == "schema":
+            return child
+        return f"{parent}.{child}"

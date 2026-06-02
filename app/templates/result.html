@@ -206,8 +206,9 @@
 
             // Field name if present - more prominent
             if (change.field_name) {
+                const fieldLabel = change.category === 'schema' ? 'Schema node' : 'Field';
                 html += `<div class="change-field">`;
-                html += `<span class="field-label">Field: </span> `;
+                html += `<span class="field-label">${fieldLabel}: </span> `;
                 html += `<code class="field-value">${escapeHtml(change.field_name)}</code>`;
                 html += `</div>`;
             }
