@@ -13,6 +13,11 @@ class Classifier:
     """Classifies API changes based on rules."""
 
     @staticmethod
+    def _method(method: str) -> Optional[str]:
+        """Format an HTTP method when a change belongs to an operation."""
+        return method.upper() if method else None
+
+    @staticmethod
     def _merge_details(
         base_details: Optional[Dict[str, Any]] = None,
         extra_details: Optional[Dict[str, Any]] = None,
@@ -117,7 +122,7 @@ class Classifier:
                 type="breaking",
                 category="parameter",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=param_name,
                 message=get_rule_message("parameter_removed"),
                 details=details,
@@ -129,7 +134,7 @@ class Classifier:
                     type="breaking",
                     category="parameter",
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     field_name=param_name,
                     message=get_rule_message("required_parameter_added"),
                     details=details,
@@ -139,7 +144,7 @@ class Classifier:
                     type="non_breaking",
                     category="parameter",
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     field_name=param_name,
                     message=get_rule_message("optional_parameter_added"),
                     details=details,
@@ -153,7 +158,7 @@ class Classifier:
                 type="breaking",
                 category="parameter",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=param_name,
                 message=get_rule_message("parameter_type_changed"),
                 details=details,
@@ -163,7 +168,7 @@ class Classifier:
                 type="breaking",
                 category="parameter",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=param_name,
                 message=get_rule_message("parameter_made_required"),
                 details=details,
@@ -173,7 +178,7 @@ class Classifier:
                 type="potentially_breaking",
                 category="parameter",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=param_name,
                 message=get_rule_message("parameter_made_optional"),
                 details=details,
@@ -183,7 +188,7 @@ class Classifier:
                 type="potentially_breaking",
                 category="parameter",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=param_name,
                 message="Parameter changed",
                 details=details,
@@ -221,7 +226,7 @@ class Classifier:
                 type="breaking",
                 category="request_body",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 message=get_rule_message("request_body_removed"),
                 details=details,
             )
@@ -232,7 +237,7 @@ class Classifier:
                     type="breaking",
                     category="request_body",
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     message=get_rule_message("required_request_body_added"),
                     details=details,
                 )
@@ -241,7 +246,7 @@ class Classifier:
                     type="non_breaking",
                     category="request_body",
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     message=get_rule_message("optional_request_body_added"),
                     details=details,
                 )
@@ -250,7 +255,7 @@ class Classifier:
                 type="breaking",
                 category="request_body",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 message=get_rule_message("request_body_made_required"),
                 details=details,
             )
@@ -259,7 +264,7 @@ class Classifier:
                 type="potentially_breaking",
                 category="request_body",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 message=get_rule_message("request_body_made_optional"),
                 details=details,
             )
@@ -268,7 +273,7 @@ class Classifier:
                 type="potentially_breaking",
                 category="request_body",
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 message="Request body changed",
                 details=details,
             )
@@ -303,15 +308,16 @@ class Classifier:
         """
         # Determine if this is a request or response schema
         is_response = location.startswith("response_")
+        category = "component_schema" if location == "component_schema" else "schema"
 
         details = Classifier._merge_details({"location": location}, details)
 
         if change_type == "removed":
             return Change(
                 type="breaking",
-                category="schema",
+                category=category,
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=field_name,
                 message=get_rule_message("field_removed"),
                 details=details,
@@ -322,9 +328,9 @@ class Classifier:
                 # Required fields in request body are breaking
                 return Change(
                     type="breaking",
-                    category="schema",
+                    category=category,
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     field_name=field_name,
                     message=get_rule_message("required_field_added"),
                     details=details,
@@ -333,9 +339,9 @@ class Classifier:
                 # Optional fields or response fields are non-breaking
                 return Change(
                     type="non_breaking",
-                    category="schema",
+                    category=category,
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     field_name=field_name,
                     message=get_rule_message("optional_field_added"),
                     details=details,
@@ -347,9 +353,9 @@ class Classifier:
                 details["new_type"] = new_type
             return Change(
                 type="breaking",
-                category="schema",
+                category=category,
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=field_name,
                 message=get_rule_message("field_type_changed"),
                 details=details,
@@ -359,9 +365,9 @@ class Classifier:
                 # Making request field required is breaking
                 return Change(
                     type="breaking",
-                    category="schema",
+                    category=category,
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     field_name=field_name,
                     message=get_rule_message("field_made_required"),
                     details=details,
@@ -370,9 +376,9 @@ class Classifier:
                 # Making response field required is potentially breaking
                 return Change(
                     type="potentially_breaking",
-                    category="schema",
+                    category=category,
                     path=path,
-                    method=method.upper(),
+                    method=Classifier._method(method),
                     field_name=field_name,
                     message=get_rule_message("field_made_required"),
                     details=details,
@@ -380,9 +386,9 @@ class Classifier:
         elif change_type == "made_optional":
             return Change(
                 type="potentially_breaking",
-                category="schema",
+                category=category,
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=field_name,
                 message=get_rule_message("field_made_optional"),
                 details=details,
@@ -390,9 +396,9 @@ class Classifier:
         else:
             return Change(
                 type="potentially_breaking",
-                category="schema",
+                category=category,
                 path=path,
-                method=method.upper(),
+                method=Classifier._method(method),
                 field_name=field_name,
                 message="Field changed",
                 details=details,
@@ -453,8 +459,52 @@ class Classifier:
             type=classify_change(rule_type),
             category="schema_constraint",
             path=path,
-            method=method.upper(),
+            method=Classifier._method(method),
             field_name=field_name,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
+    def classify_component_change(
+        component_type: str,
+        component_name: str,
+        change_type: str,
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify reusable OpenAPI component changes."""
+        referenced = bool(details and details.get("impacted_operations"))
+        if change_type == "removed":
+            rule_type = (
+                "referenced_component_removed" if referenced else "component_removed"
+            )
+        elif change_type == "added":
+            rule_type = "component_added"
+        else:
+            rule_type = "component_changed"
+
+        schema_path = (
+            details.get("ref")
+            if details and details.get("ref")
+            else f"#/components/{component_type}/{component_name}"
+        )
+        change_details = Classifier._merge_details(
+            {
+                "component_type": component_type,
+                "schema_path": schema_path,
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category="component_schema" if component_type == "schemas" else "component",
+            path=schema_path,
+            field_name=component_name,
             message=get_rule_message(rule_type),
             details=change_details,
         )

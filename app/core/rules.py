@@ -22,6 +22,7 @@ BREAKING_RULES = {
     "request_body_made_required": "Request body made required",
     "enum_value_removed": "Enum value removed",
     "constraint_made_stricter": "Schema constraint made stricter",
+    "referenced_component_removed": "Referenced reusable component removed",
     "success_response_removed": "Success response (2xx) removed",
 }
 
@@ -32,6 +33,8 @@ POTENTIALLY_BREAKING_RULES = {
     "default_value_removed": "Default value removed",
     "default_value_changed": "Default value changed",
     "constraint_changed": "Schema constraint changed",
+    "component_removed": "Reusable component removed",
+    "component_changed": "Reusable component changed",
     "parameter_made_optional": "Parameter made optional",
     "field_made_optional": "Field made optional",
     "request_body_made_optional": "Request body made optional",
@@ -48,6 +51,7 @@ NON_BREAKING_RULES = {
     "response_added": "New response status",
     "default_value_added": "Default value added",
     "constraint_made_looser": "Schema constraint made less restrictive",
+    "component_added": "Reusable component added",
     "metadata_changed": "Metadata-only changes",
 }
 

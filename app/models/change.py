@@ -12,6 +12,7 @@ ChangeCategory = Literal[
     "schema",
     "response",
     "request_body",
+    "component",
     "component_schema",
     "schema_constraint",
     "media_type",

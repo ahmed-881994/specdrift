@@ -1877,6 +1877,48 @@ body.repaint-shell {
     overflow-wrap: anywhere;
 }
 
+.impacted-operations,
+.repaint-results-container .impacted-operations {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+    padding: 0.65rem;
+    background: rgba(127, 179, 255, 0.06);
+    border: 1px solid rgba(127, 179, 255, 0.18);
+}
+
+.impacted-operations-label,
+.repaint-results-container .impacted-operations-label {
+    color: var(--rp-label);
+    font-family: var(--rp-font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.impacted-operations ul,
+.repaint-results-container .impacted-operations ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.impacted-operations code,
+.repaint-results-container .impacted-operations code {
+    display: inline-flex;
+    max-width: 100%;
+    padding: 0.25rem 0.45rem;
+    color: var(--rp-info);
+    background: var(--rp-ink-2);
+    border: 1px solid var(--rp-rule);
+    font-family: var(--rp-font-mono);
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+}
+
 .value-diff-grid,
 .repaint-results-container .value-diff-grid {
     display: grid;

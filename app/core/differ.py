@@ -6,7 +6,7 @@ between two API specifications.
 """
 
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from app.models.change import Change, DiffResult
 from app.core.classifier import Classifier
 from app.core.normalizer import Normalizer
@@ -90,15 +90,28 @@ class Differ:
         self.old_version = self._extract_version(old_spec)
         self.new_version = self._extract_version(new_spec)
 
+        component_ref_index = self._build_component_ref_index(
+            old_spec.get("paths", {}),
+            new_spec.get("paths", {}),
+            old_spec.get("webhooks", {}),
+            new_spec.get("webhooks", {}),
+        )
+
         # Normalize both specs
         old_normalized = Normalizer.normalize(old_spec)
         new_normalized = Normalizer.normalize(new_spec)
 
         self._diff_json_schema_dialect(old_normalized, new_normalized)
 
+        old_components = old_normalized.get("components", {})
+        new_components = new_normalized.get("components", {})
+
         # Extract paths
         old_paths = old_normalized.get("paths", {})
         new_paths = new_normalized.get("paths", {})
+
+        # Detect reusable component-level changes
+        self._diff_components(old_components, new_components, component_ref_index)
 
         # Detect endpoint-level changes
         self._diff_endpoints(old_paths, new_paths)
@@ -190,6 +203,232 @@ class Differ:
                 summary["non_breaking"] += 1
 
         return summary
+
+    def _diff_components(
+        self,
+        old_components: Dict[str, Any],
+        new_components: Dict[str, Any],
+        component_ref_index: Dict[str, List[str]],
+    ) -> None:
+        """Detect changes in reusable OpenAPI components."""
+        component_types = (
+            "schemas",
+            "parameters",
+            "responses",
+            "requestBodies",
+            "headers",
+            "securitySchemes",
+            "examples",
+            "callbacks",
+            "pathItems",
+        )
+
+        for component_type in component_types:
+            old_items = old_components.get(component_type, {})
+            new_items = new_components.get(component_type, {})
+            if not isinstance(old_items, dict) or not isinstance(new_items, dict):
+                continue
+
+            if component_type == "schemas":
+                self._diff_component_schemas(
+                    old_items, new_items, component_ref_index
+                )
+            else:
+                self._diff_component_map(
+                    component_type, old_items, new_items, component_ref_index
+                )
+
+    def _diff_component_schemas(
+        self,
+        old_schemas: Dict[str, Any],
+        new_schemas: Dict[str, Any],
+        component_ref_index: Dict[str, List[str]],
+    ) -> None:
+        """Detect reusable schema component additions, removals, and changes."""
+        component_type = "schemas"
+
+        for schema_name in old_schemas:
+            if schema_name not in new_schemas:
+                self.changes.append(
+                    Classifier.classify_component_change(
+                        component_type,
+                        schema_name,
+                        "removed",
+                        old_value=old_schemas[schema_name],
+                        details=self._component_details(
+                            component_type, schema_name, component_ref_index
+                        ),
+                    )
+                )
+
+        for schema_name in new_schemas:
+            if schema_name not in old_schemas:
+                self.changes.append(
+                    Classifier.classify_component_change(
+                        component_type,
+                        schema_name,
+                        "added",
+                        new_value=new_schemas[schema_name],
+                        details=self._component_details(
+                            component_type, schema_name, component_ref_index
+                        ),
+                    )
+                )
+
+        for schema_name in old_schemas:
+            if schema_name not in new_schemas:
+                continue
+
+            old_schema = old_schemas[schema_name]
+            new_schema = new_schemas[schema_name]
+            if not isinstance(old_schema, dict) or not isinstance(new_schema, dict):
+                if old_schema != new_schema:
+                    self.changes.append(
+                        Classifier.classify_component_change(
+                            component_type,
+                            schema_name,
+                            "changed",
+                            old_value=old_schema,
+                            new_value=new_schema,
+                            details=self._component_details(
+                                component_type, schema_name, component_ref_index
+                            ),
+                        )
+                    )
+                continue
+
+            self._diff_schema(
+                f"#/components/schemas/{self._json_pointer_escape(schema_name)}",
+                "",
+                old_schema,
+                new_schema,
+                "component_schema",
+                self._component_pointer(component_type, schema_name),
+                schema_name,
+            )
+
+    def _diff_component_map(
+        self,
+        component_type: str,
+        old_items: Dict[str, Any],
+        new_items: Dict[str, Any],
+        component_ref_index: Dict[str, List[str]],
+    ) -> None:
+        """Detect additions, removals, and object changes in reusable components."""
+        for component_name in old_items:
+            if component_name not in new_items:
+                self.changes.append(
+                    Classifier.classify_component_change(
+                        component_type,
+                        component_name,
+                        "removed",
+                        old_value=old_items[component_name],
+                        details=self._component_details(
+                            component_type, component_name, component_ref_index
+                        ),
+                    )
+                )
+
+        for component_name in new_items:
+            if component_name not in old_items:
+                self.changes.append(
+                    Classifier.classify_component_change(
+                        component_type,
+                        component_name,
+                        "added",
+                        new_value=new_items[component_name],
+                        details=self._component_details(
+                            component_type, component_name, component_ref_index
+                        ),
+                    )
+                )
+
+        for component_name in old_items:
+            if (
+                component_name in new_items
+                and old_items[component_name] != new_items[component_name]
+            ):
+                self.changes.append(
+                    Classifier.classify_component_change(
+                        component_type,
+                        component_name,
+                        "changed",
+                        old_value=old_items[component_name],
+                        new_value=new_items[component_name],
+                        details=self._component_details(
+                            component_type, component_name, component_ref_index
+                        ),
+                    )
+                )
+
+    def _component_details(
+        self,
+        component_type: str,
+        component_name: str,
+        component_ref_index: Dict[str, List[str]],
+    ) -> Dict[str, Any]:
+        """Return common details for reusable component changes."""
+        ref = f"#/components/{component_type}/{self._json_pointer_escape(component_name)}"
+        details: Dict[str, Any] = {"ref": ref}
+        impacted_operations = component_ref_index.get(ref)
+        if impacted_operations:
+            details["impacted_operations"] = impacted_operations
+        return details
+
+    def _build_component_ref_index(
+        self,
+        old_paths: Dict[str, Any],
+        new_paths: Dict[str, Any],
+        old_webhooks: Dict[str, Any],
+        new_webhooks: Dict[str, Any],
+    ) -> Dict[str, List[str]]:
+        """Index local component refs by the operations that use them."""
+        ref_index: Dict[str, Set[str]] = {}
+        for paths, prefix in (
+            (old_paths, ""),
+            (new_paths, ""),
+            (old_webhooks, "WEBHOOK "),
+            (new_webhooks, "WEBHOOK "),
+        ):
+            for path, path_item in paths.items():
+                if not isinstance(path_item, dict):
+                    continue
+                path_level_refs = self._extract_component_refs(
+                    path_item.get("parameters", [])
+                )
+                for method, operation in path_item.items():
+                    if method.lower() not in {
+                        "get",
+                        "post",
+                        "put",
+                        "delete",
+                        "patch",
+                        "options",
+                        "head",
+                    }:
+                        continue
+                    operation_label = f"{prefix}{method.upper()} {path}"
+                    operation_refs = path_level_refs | self._extract_component_refs(
+                        operation
+                    )
+                    for ref in operation_refs:
+                        ref_index.setdefault(ref, set()).add(operation_label)
+
+        return {ref: sorted(operations) for ref, operations in ref_index.items()}
+
+    def _extract_component_refs(self, value: Any) -> Set[str]:
+        """Return local component refs found anywhere under a value."""
+        refs: Set[str] = set()
+        if isinstance(value, dict):
+            ref = value.get("$ref")
+            if isinstance(ref, str) and ref.startswith("#/components/"):
+                refs.add(ref)
+            for child in value.values():
+                refs.update(self._extract_component_refs(child))
+        elif isinstance(value, list):
+            for item in value:
+                refs.update(self._extract_component_refs(item))
+        return refs
 
     def _diff_endpoints(
         self, old_paths: Dict[str, Any], new_paths: Dict[str, Any]
@@ -1493,6 +1732,14 @@ class Differ:
         if content_type:
             pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
         return f"{pointer}/schema"
+
+    @classmethod
+    def _component_pointer(cls, component_type: str, component_name: str) -> str:
+        """Return a stable pointer for a reusable component."""
+        return (
+            f"#/components/{cls._json_pointer_escape(component_type)}/"
+            f"{cls._json_pointer_escape(component_name)}"
+        )
 
     @classmethod
     def _schema_property_pointer(cls, schema_path: str, prop_name: str) -> str:

@@ -2104,6 +2104,251 @@ class TestDiffer:
             "dependentRequired"
         )
 
+    def test_detect_removed_referenced_component_schema(self):
+        """Test detection of removed reusable schemas and impacted operations."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"id": {"type": "string"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "2.0.0"},
+            "paths": old_spec["paths"],
+            "components": {"schemas": {}},
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(
+            c
+            for c in result.changes
+            if c.category == "component_schema" and c.field_name == "User"
+        )
+        assert change.type == "breaking"
+        assert change.message == "Referenced reusable component removed"
+        assert change.details["component_type"] == "schemas"
+        assert change.details["ref"] == "#/components/schemas/User"
+        assert change.details["impacted_operations"] == ["GET /users"]
+
+    def test_detect_component_schema_property_change(self):
+        """Test recursive diffing inside reusable schema components."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
+            },
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "email": {"type": "string"},
+                            "name": {"type": "string"},
+                        },
+                        "required": ["name"],
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "2.0.0"},
+            "paths": old_spec["paths"],
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "email": {"type": "integer"},
+                            "name": {"type": "string"},
+                        },
+                        "required": ["name", "email"],
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        type_change = next(
+            c
+            for c in result.changes
+            if c.field_name == "User.email" and c.message == "Field type changed"
+        )
+        assert type_change.category == "component_schema"
+        assert type_change.path == "#/components/schemas/User"
+        assert type_change.details["schema_path"] == (
+            "#/components/schemas/User/properties/email/type"
+        )
+        assert type_change.details["old_value"] == "string"
+        assert type_change.details["new_value"] == "integer"
+
+        required_change = next(
+            c
+            for c in result.changes
+            if c.field_name == "User.email" and c.message == "Field made required"
+        )
+        assert required_change.category == "component_schema"
+        assert required_change.details["schema_path"] == (
+            "#/components/schemas/User/required"
+        )
+
+    def test_detect_reusable_component_map_changes(self):
+        """Test additions, removals, and changes in non-schema component maps."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [{"$ref": "#/components/parameters/TraceId"}],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+            "components": {
+                "parameters": {
+                    "TraceId": {
+                        "name": "X-Trace-Id",
+                        "in": "header",
+                        "schema": {"type": "string"},
+                    },
+                    "Locale": {
+                        "name": "locale",
+                        "in": "query",
+                        "schema": {"type": "string"},
+                    },
+                },
+                "securitySchemes": {
+                    "ApiKeyAuth": {"type": "apiKey", "in": "header", "name": "X-Key"}
+                },
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "2.0.0"},
+            "paths": old_spec["paths"],
+            "components": {
+                "parameters": {
+                    "TraceId": {
+                        "name": "X-Trace-Id",
+                        "in": "header",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    },
+                    "Page": {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {"type": "integer"},
+                    },
+                },
+                "securitySchemes": {
+                    "ApiKeyAuth": {"type": "http", "scheme": "bearer"}
+                },
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        removed = next(c for c in result.changes if c.field_name == "Locale")
+        assert removed.category == "component"
+        assert removed.type == "potentially_breaking"
+        assert removed.details["component_type"] == "parameters"
+
+        added = next(c for c in result.changes if c.field_name == "Page")
+        assert added.category == "component"
+        assert added.type == "non_breaking"
+
+        changed = next(c for c in result.changes if c.field_name == "TraceId")
+        assert changed.category == "component"
+        assert changed.type == "potentially_breaking"
+        assert changed.details["impacted_operations"] == ["GET /users"]
+
+        security_change = next(
+            c for c in result.changes if c.field_name == "ApiKeyAuth"
+        )
+        assert security_change.category == "component"
+        assert security_change.details["component_type"] == "securitySchemes"
+
+    def test_detect_removed_referenced_request_body_component(self):
+        """Test impacted operation reporting for reusable request body refs."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "$ref": "#/components/requestBodies/CreateUser"
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+            "components": {
+                "requestBodies": {
+                    "CreateUser": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/UserInput"}
+                            }
+                        },
+                    }
+                },
+                "schemas": {
+                    "UserInput": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                    }
+                },
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "2.0.0"},
+            "paths": old_spec["paths"],
+            "components": {
+                "requestBodies": {},
+                "schemas": old_spec["components"]["schemas"],
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "CreateUser")
+        assert change.category == "component"
+        assert change.type == "breaking"
+        assert change.details["component_type"] == "requestBodies"
+        assert change.details["impacted_operations"] == ["POST /users"]
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

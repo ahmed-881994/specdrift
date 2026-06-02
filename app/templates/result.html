@@ -208,8 +208,10 @@
             if (change.field_name) {
                 const fieldLabel = change.category === 'schema_constraint'
                     ? 'Schema keyword'
-                    : change.category === 'schema'
+                    : change.category === 'schema' || change.category === 'component_schema'
                         ? 'Schema node'
+                        : change.category === 'component'
+                            ? 'Component'
                         : change.category === 'metadata'
                             ? 'Metadata'
                             : 'Field';
@@ -240,8 +242,8 @@
             return '';
         }
 
-        const metadataKeys = ['keyword', 'location', 'content_type', 'status_code', 'required', 'ref'];
-        const handledKeys = new Set(['schema_path', 'old_value', 'new_value', ...metadataKeys]);
+        const metadataKeys = ['component_type', 'keyword', 'location', 'content_type', 'status_code', 'required', 'ref'];
+        const handledKeys = new Set(['schema_path', 'old_value', 'new_value', 'impacted_operations', ...metadataKeys]);
         if (
             Object.prototype.hasOwnProperty.call(details, 'old_value') ||
             Object.prototype.hasOwnProperty.call(details, 'new_value')
@@ -273,6 +275,17 @@
                 html += `<strong>${escapeHtml(formatValue(value))}</strong>`;
                 html += '</span>';
             }
+            html += '</div>';
+        }
+
+        if (Array.isArray(details.impacted_operations) && details.impacted_operations.length > 0) {
+            html += '<div class="impacted-operations">';
+            html += '<span class="impacted-operations-label">Impacted operations</span>';
+            html += '<ul>';
+            for (const operation of details.impacted_operations) {
+                html += `<li><code>${escapeHtml(operation)}</code></li>`;
+            }
+            html += '</ul>';
             html += '</div>';
         }
 
