@@ -1815,6 +1815,295 @@ class TestDiffer:
         assert result.old_version is not None
         assert result.new_version is not None
 
+    def test_detect_openapi_31_json_schema_dialect_change(self):
+        """Test detection of root JSON Schema dialect changes."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+            "paths": {},
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "jsonSchemaDialect": "https://spec.openapis.org/oas/3.1/dialect/base",
+            "paths": {},
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "jsonSchemaDialect")
+        assert change.category == "metadata"
+        assert change.type == "potentially_breaking"
+        assert change.details["schema_path"] == "#/jsonSchemaDialect"
+        assert change.details["old_value"] == "https://json-schema.org/draft/2020-12/schema"
+        assert change.details["new_value"] == "https://spec.openapis.org/oas/3.1/dialect/base"
+
+    def test_detect_openapi_31_schema_keyword_change(self):
+        """Test detection of 3.1 JSON Schema keyword changes."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/uploads": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "payload": {
+                                                "type": "string",
+                                                "contentMediaType": "application/json",
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/uploads": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "payload": {
+                                                "type": "string",
+                                                "contentMediaType": "application/cbor",
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(
+            c
+            for c in result.changes
+            if c.category == "schema_constraint"
+            and c.details["keyword"] == "contentMediaType"
+        )
+        assert change.type == "potentially_breaking"
+        assert change.field_name == "payload"
+        assert change.details["schema_path"] == (
+            "#/paths/~1uploads/post/requestBody/content/application~1json/schema/"
+            "properties/payload/contentMediaType"
+        )
+        assert change.details["old_value"] == "application/json"
+        assert change.details["new_value"] == "application/cbor"
+
+    def test_openapi_30_example_and_openapi_31_examples_are_equivalent(self):
+        """Test that OpenAPI 3.0 example and 3.1 examples compare cleanly."""
+        old_spec = {
+            "openapi": "3.0.3",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "example": "Ada",
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "examples": ["Ada"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        assert not [
+            c
+            for c in result.changes
+            if c.category == "schema_constraint"
+            and c.details.get("keyword") == "examples"
+        ]
+
+    def test_detect_openapi_31_examples_change(self):
+        """Test detection of 3.1 examples changes."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "examples": ["Ada"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "examples": ["Grace"],
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(
+            c
+            for c in result.changes
+            if c.category == "schema_constraint"
+            and c.details["keyword"] == "examples"
+        )
+        assert change.type == "potentially_breaking"
+        assert change.field_name == "name"
+        assert change.details["old_value"] == ["Ada"]
+        assert change.details["new_value"] == ["Grace"]
+
+    def test_detect_openapi_31_dependent_required_change(self):
+        """Test detection of JSON Schema 2020-12 dependentRequired changes."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/payments": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "dependentRequired": {"card": ["billingZip"]},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/payments": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "dependentRequired": {
+                                            "card": ["billingZip", "cvv"]
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(
+            c
+            for c in result.changes
+            if c.category == "schema_constraint"
+            and c.details["keyword"] == "dependentRequired"
+        )
+        assert change.type == "potentially_breaking"
+        assert change.details["schema_path"] == (
+            "#/paths/~1payments/post/requestBody/content/application~1json/schema/"
+            "dependentRequired"
+        )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

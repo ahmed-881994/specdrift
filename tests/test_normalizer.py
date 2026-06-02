@@ -47,6 +47,36 @@ class TestNormalize:
         assert "components" in result
         assert "paths" in result
 
+    def test_normalize_openapi_31_dialect_and_webhooks(self):
+        """Test preserving OpenAPI 3.1 dialect and normalizing webhooks."""
+        spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "Test API", "version": "1.0.0"},
+            "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+            "paths": {},
+            "webhooks": {
+                "user.created": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {"type": "object"}
+                                }
+                            }
+                        },
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+            "components": {},
+        }
+
+        result = Normalizer.normalize(spec)
+
+        assert result["jsonSchemaDialect"] == "https://json-schema.org/draft/2020-12/schema"
+        assert "user.created" in result["webhooks"]
+        assert "post" in result["webhooks"]["user.created"]
+
     def test_normalize_openapi_3_nullable_component_schema(self):
         """Test that OpenAPI 3.0 nullable is normalized in components."""
         spec = {

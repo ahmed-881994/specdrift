@@ -41,8 +41,10 @@ class Normalizer:
             "version": spec.get("openapi", "3.0.0"),
             "info": spec.get("info", {}),
             "servers": spec.get("servers", []),
+            "jsonSchemaDialect": spec.get("jsonSchemaDialect"),
             "paths": Normalizer._normalize_paths(spec.get("paths", {}), is_openapi3=True),
             "components": Normalizer._normalize_components(spec.get("components", {})),
+            "webhooks": Normalizer._normalize_paths(spec.get("webhooks", {}), is_openapi3=True),
         }
         return normalized
 

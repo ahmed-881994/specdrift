@@ -80,6 +80,14 @@ class Parser:
         if not spec.get("info"):
             raise ParseError("Specification must include 'info' field")
 
+        if openapi_version and str(openapi_version).startswith("3.1"):
+            if not any(spec.get(key) for key in ("paths", "components", "webhooks")):
+                raise ParseError(
+                    "OpenAPI 3.1 specification must include at least one of "
+                    "'paths', 'components', or 'webhooks'"
+                )
+            return
+
         if not spec.get("paths"):
             raise ParseError("Specification must include 'paths' field")
 

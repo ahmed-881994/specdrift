@@ -17,6 +17,9 @@ class Differ:
     """Compares two API specifications and detects changes."""
 
     CONSTRAINT_KEYWORDS = (
+        "$schema",
+        "$id",
+        "$defs",
         "const",
         "default",
         "minimum",
@@ -33,8 +36,20 @@ class Differ:
         "uniqueItems",
         "minProperties",
         "maxProperties",
+        "propertyNames",
+        "dependentRequired",
+        "dependentSchemas",
+        "if",
+        "then",
+        "else",
+        "contains",
         "minContains",
         "maxContains",
+        "unevaluatedProperties",
+        "unevaluatedItems",
+        "contentEncoding",
+        "contentMediaType",
+        "contentSchema",
     )
     INCREASE_STRICTER_KEYWORDS = {
         "minimum",
@@ -79,6 +94,8 @@ class Differ:
         old_normalized = Normalizer.normalize(old_spec)
         new_normalized = Normalizer.normalize(new_spec)
 
+        self._diff_json_schema_dialect(old_normalized, new_normalized)
+
         # Extract paths
         old_paths = old_normalized.get("paths", {})
         new_paths = new_normalized.get("paths", {})
@@ -98,6 +115,32 @@ class Differ:
             changes=self.changes,
             old_version=self.old_version,
             new_version=self.new_version,
+        )
+
+    def _diff_json_schema_dialect(
+        self, old_spec: Dict[str, Any], new_spec: Dict[str, Any]
+    ) -> None:
+        """Detect OpenAPI 3.1 root JSON Schema dialect changes."""
+        old_dialect = old_spec.get("jsonSchemaDialect")
+        new_dialect = new_spec.get("jsonSchemaDialect")
+
+        if old_dialect == new_dialect:
+            return
+
+        self.changes.append(
+            Change(
+                type="potentially_breaking",
+                category="metadata",
+                path="#",
+                field_name="jsonSchemaDialect",
+                message="JSON Schema dialect changed",
+                details={
+                    "schema_path": "#/jsonSchemaDialect",
+                    "keyword": "jsonSchemaDialect",
+                    "old_value": old_dialect,
+                    "new_value": new_dialect,
+                },
+            )
         )
 
     @staticmethod
@@ -638,6 +681,9 @@ class Differ:
         self._diff_enum_constraint(
             path, method, old_schema, new_schema, location, schema_path, field_name
         )
+        self._diff_examples_keyword(
+            path, method, old_schema, new_schema, location, schema_path, field_name
+        )
 
         for keyword in self.CONSTRAINT_KEYWORDS:
             if keyword == "default":
@@ -676,6 +722,48 @@ class Differ:
                 new_value if new_has_keyword else None,
                 self._keyword_pointer(schema_path, keyword),
             )
+
+    def _diff_examples_keyword(
+        self,
+        path: str,
+        method: str,
+        old_schema: Dict[str, Any],
+        new_schema: Dict[str, Any],
+        location: str,
+        schema_path: str,
+        field_name: str,
+    ) -> None:
+        """Compare OpenAPI 3.0 example and OpenAPI 3.1 examples consistently."""
+        old_has_examples = "examples" in old_schema or "example" in old_schema
+        new_has_examples = "examples" in new_schema or "example" in new_schema
+
+        if not old_has_examples and not new_has_examples:
+            return
+
+        old_value = self._schema_examples_value(old_schema)
+        new_value = self._schema_examples_value(new_schema)
+        if old_value == new_value:
+            return
+
+        self._append_schema_constraint_change(
+            path,
+            method,
+            field_name,
+            "changed",
+            location,
+            "examples",
+            old_value if old_has_examples else None,
+            new_value if new_has_examples else None,
+            self._keyword_pointer(schema_path, "examples"),
+        )
+
+    @staticmethod
+    def _schema_examples_value(schema: Dict[str, Any]) -> Any:
+        if "examples" in schema:
+            return schema["examples"]
+        if "example" in schema:
+            return [schema["example"]]
+        return None
 
     def _diff_enum_constraint(
         self,

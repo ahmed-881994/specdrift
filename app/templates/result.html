@@ -38,12 +38,12 @@
             <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--risky">
                 <span class="tone-warn">Risky</span>
                 <h3>Review required</h3>
-                <p>Status code changes, enum expansion, stricter validation rules, content type changes, and ambiguous schema shifts.</p>
+                <p>Status code changes, enum expansion, schema dialect changes, stricter validation rules, content type changes, and ambiguous schema shifts.</p>
             </article>
             <article class="repaint-info-card repaint-brackets repaint-result-type-card repaint-result-type-card--safe">
                 <span class="tone-add">Safe</span>
                 <h3>Additive change</h3>
-                <p>New endpoints, optional fields, less restrictive validation rules, new response headers, and documentation improvements.</p>
+                <p>New endpoints, optional fields, OpenAPI 3.1 examples, less restrictive validation rules, new response headers, and documentation improvements.</p>
             </article>
         </div>
     </div>
@@ -207,10 +207,12 @@
             // Field name if present - more prominent
             if (change.field_name) {
                 const fieldLabel = change.category === 'schema_constraint'
-                    ? 'Schema constraint'
+                    ? 'Schema keyword'
                     : change.category === 'schema'
                         ? 'Schema node'
-                        : 'Field';
+                        : change.category === 'metadata'
+                            ? 'Metadata'
+                            : 'Field';
                 html += `<div class="change-field">`;
                 html += `<span class="field-label">${fieldLabel}: </span> `;
                 html += `<code class="field-value">${escapeHtml(change.field_name)}</code>`;
