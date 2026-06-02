@@ -67,7 +67,12 @@ class TestDiffer:
         differ.changes = [
             Change(category="endpoint", type="breaking", message="", path="/test"),
             Change(category="endpoint", type="breaking", message="", path="/test"),
-            Change(category="endpoint", type="potentially_breaking", message="", path="/test"),
+            Change(
+                category="endpoint",
+                type="potentially_breaking",
+                message="",
+                path="/test",
+            ),
             Change(category="endpoint", type="non_breaking", message="", path="/test"),
         ]
 
@@ -91,16 +96,15 @@ class TestDiffer:
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
 
         differ = Differ()
         result = differ.diff(old_spec, new_spec)
 
         endpoint_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "endpoint" and c.type == "breaking"
         ]
         assert len(endpoint_changes) == 1
@@ -111,9 +115,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
         new_spec = {
             "openapi": "3.0.0",
@@ -128,7 +130,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         endpoint_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "endpoint" and c.type == "non_breaking"
         ]
         assert len(endpoint_changes) == 1
@@ -149,17 +152,14 @@ class TestDiffer:
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
 
         differ = Differ()
         result = differ.diff(old_spec, new_spec)
 
         method_changes = [
-            c for c in result.changes
-            if c.category == "method" and c.type == "breaking"
+            c for c in result.changes if c.category == "method" and c.type == "breaking"
         ]
         assert len(method_changes) == 1
         assert method_changes[0].method == "POST"
@@ -169,9 +169,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
         new_spec = {
             "openapi": "3.0.0",
@@ -188,7 +186,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         method_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "method" and c.type == "non_breaking"
         ]
         assert len(method_changes) == 1
@@ -213,16 +212,15 @@ class TestDiffer:
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
 
         differ = Differ()
         result = differ.diff(old_spec, new_spec)
 
         param_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "parameter" and c.type == "breaking"
         ]
         assert len(param_changes) == 1
@@ -234,9 +232,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
         new_spec = {
             "openapi": "3.0.0",
@@ -262,7 +258,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         param_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "parameter" and c.type == "breaking"
         ]
         assert len(param_changes) == 1
@@ -274,9 +271,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
         new_spec = {
             "openapi": "3.0.0",
@@ -285,7 +280,11 @@ class TestDiffer:
                 "/users": {
                     "get": {
                         "parameters": [
-                            {"name": "limit", "in": "query", "schema": {"type": "integer"}}
+                            {
+                                "name": "limit",
+                                "in": "query",
+                                "schema": {"type": "integer"},
+                            }
                         ],
                         "responses": {"200": {"description": "OK"}},
                     }
@@ -297,7 +296,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         param_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "parameter" and c.type == "non_breaking"
         ]
         assert len(param_changes) == 1
@@ -338,12 +338,63 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         param_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "parameter" and c.type == "breaking"
         ]
         assert len(param_changes) == 1
         assert param_changes[0].details.get("old_type") == "string"
         assert param_changes[0].details.get("new_type") == "integer"
+
+    def test_parameter_type_change_includes_reporting_details(self):
+        """Test that parameter changes include stable reporting metadata."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users/{userId}": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "include/profile",
+                                "in": "query",
+                                "schema": {"type": "string"},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users/{userId}": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "include/profile",
+                                "in": "query",
+                                "schema": {"type": "boolean"},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "parameter")
+        assert change.details["schema_path"] == (
+            "#/paths/~1users~1{userId}/get/parameters/query/include~1profile/schema/type"
+        )
+        assert change.details["keyword"] == "type"
+        assert change.details["old_value"] == "string"
+        assert change.details["new_value"] == "boolean"
 
     def test_detect_parameter_made_required(self):
         """Test detection of parameter made required."""
@@ -385,7 +436,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         param_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "parameter" and "required" in c.message.lower()
         ]
         assert len(param_changes) == 1
@@ -431,7 +483,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         param_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "parameter" and "optional" in c.message.lower()
         ]
         assert len(param_changes) == 1
@@ -467,7 +520,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         body_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "request_body" and c.type == "breaking"
         ]
         assert len(body_changes) == 1
@@ -504,7 +558,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         body_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "request_body" and c.type == "breaking"
         ]
         assert len(body_changes) == 1
@@ -564,8 +619,7 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         schema_changes = [
-            c for c in result.changes
-            if c.category == "schema" and c.type == "breaking"
+            c for c in result.changes if c.category == "schema" and c.type == "breaking"
         ]
         assert len(schema_changes) == 1
         assert schema_changes[0].field_name == "email"
@@ -621,12 +675,69 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         schema_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "schema" and c.field_name == "age"
         ]
         assert len(schema_changes) == 1
         assert schema_changes[0].details.get("old_type") == "string"
         assert schema_changes[0].details.get("new_type") == "integer"
+
+    def test_schema_change_includes_reporting_details(self):
+        """Test that schema property changes include stable reporting metadata."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {"age": {"type": "string"}},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {"age": {"type": "integer"}},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema")
+        assert change.details["schema_path"] == (
+            "#/paths/~1users/post/requestBody/content/application~1json/schema/properties/age/type"
+        )
+        assert change.details["keyword"] == "type"
+        assert change.details["old_value"] == "string"
+        assert change.details["new_value"] == "integer"
 
     def test_detect_removed_response(self):
         """Test detection of removed responses."""
@@ -647,16 +758,15 @@ class TestDiffer:
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
 
         differ = Differ()
         result = differ.diff(old_spec, new_spec)
 
         response_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "response" and "404" in c.field_name
         ]
         assert len(response_changes) == 1
@@ -682,16 +792,15 @@ class TestDiffer:
         new_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
 
         differ = Differ()
         result = differ.diff(old_spec, new_spec)
 
         response_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "response" and c.type == "breaking"
         ]
         assert len(response_changes) == 1
@@ -702,9 +811,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
         new_spec = {
             "openapi": "3.0.0",
@@ -725,7 +832,8 @@ class TestDiffer:
         result = differ.diff(old_spec, new_spec)
 
         response_changes = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "response" and c.type == "non_breaking"
         ]
         assert len(response_changes) == 1
@@ -736,9 +844,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
         }
         new_spec = {
             "openapi": "3.0.0",

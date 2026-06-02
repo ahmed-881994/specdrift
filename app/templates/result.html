@@ -184,11 +184,11 @@
         for (const change of changes) {
             html += '<li>';
             html += '<div class="change-item repaint-change-item">';
-            
+
             // Main change header with better spacing
             html += '<div class="change-header">';
-            html += `<span class="change-category">${change.category.toUpperCase()}</span>`;
-            
+            html += `<span class="change-category">${formatCategory(change.category)}</span>`;
+
             // Path and method in separate line if method exists
             if (change.method) {
                 html += '<div class="change-endpoint">';
@@ -198,12 +198,12 @@
             } else {
                 html += `<span class="change-path"><code>${escapeHtml(change.path)}</code></span>`;
             }
-            
+
             html += '</div>';
 
             // Change details body
             html += '<div class="change-body">';
-            
+
             // Field name if present - more prominent
             if (change.field_name) {
                 html += `<div class="change-field">`;
@@ -211,34 +211,110 @@
                 html += `<code class="field-value">${escapeHtml(change.field_name)}</code>`;
                 html += `</div>`;
             }
-            
+
             // Message - more readable
             html += `<div class="change-message">`;
             html += `<span class="message-icon">-&gt;</span> ${escapeHtml(change.message)}`;
             html += `</div>`;
-            
-            // Additional details if present - better formatted
-            if (change.details && Object.keys(change.details).length > 0) {
-                html += '<div class="change-details">';
-                html += '<div class="details-header">Additional Details:</div>';
-                html += '<ul class="detail-list">';
-                for (const [key, value] of Object.entries(change.details)) {
-                    html += `<li class="detail-item">`;
-                    html += `<span class="detail-key">${escapeHtml(key)}</span>`;
-                    html += `<span class="detail-separator">: </span>`;
-                    html += `<span class="detail-value">${escapeHtml(formatValue(value))}</span>`;
-                    html += `</li>`;
-                }
-                html += '</ul>';
-                html += '</div>';
-            }
-            
+
+            html += renderStructuredDetails(change.details);
+
             html += '</div>'; // change-body
             html += '</div>'; // change-item
             html += '</li>';
         }
 
         html += '</ul></div>';
+        return html;
+    }
+
+    function renderStructuredDetails(details) {
+        if (!details || Object.keys(details).length === 0) {
+            return '';
+        }
+
+        const metadataKeys = ['keyword', 'location', 'content_type', 'status_code', 'required', 'ref'];
+        const handledKeys = new Set(['schema_path', 'old_value', 'new_value', ...metadataKeys]);
+        if (
+            Object.prototype.hasOwnProperty.call(details, 'old_value') ||
+            Object.prototype.hasOwnProperty.call(details, 'new_value')
+        ) {
+            handledKeys.add('old_type');
+            handledKeys.add('new_type');
+        }
+        const extraEntries = Object.entries(details).filter(([key]) => !handledKeys.has(key));
+
+        let html = '<div class="change-details">';
+        html += '<div class="details-header">Change Details</div>';
+
+        if (details.schema_path) {
+            html += '<div class="spec-path-row">';
+            html += '<span class="spec-path-label">Spec path</span>';
+            html += `<code class="spec-path-value">${escapeHtml(details.schema_path)}</code>`;
+            html += '</div>';
+        }
+
+        const metadata = metadataKeys
+            .filter(key => Object.prototype.hasOwnProperty.call(details, key))
+            .map(key => [key, details[key]]);
+
+        if (metadata.length > 0) {
+            html += '<div class="detail-chip-list">';
+            for (const [key, value] of metadata) {
+                html += '<span class="detail-chip">';
+                html += `<span>${escapeHtml(formatLabel(key))}</span>`;
+                html += `<strong>${escapeHtml(formatValue(value))}</strong>`;
+                html += '</span>';
+            }
+            html += '</div>';
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(details, 'old_value') ||
+            Object.prototype.hasOwnProperty.call(details, 'new_value')
+        ) {
+            html += '<div class="value-diff-grid">';
+            html += renderValuePanel('Old', details.old_value, 'old');
+            html += renderValuePanel('New', details.new_value, 'new');
+            html += '</div>';
+        }
+
+        if (extraEntries.length > 0) {
+            html += '<ul class="detail-list">';
+            for (const [key, value] of extraEntries) {
+                html += `<li class="detail-item">`;
+                html += `<span class="detail-key">${escapeHtml(formatLabel(key))}</span>`;
+                html += `<span class="detail-separator">: </span>`;
+                html += `<span class="detail-value">${escapeHtml(formatValue(value))}</span>`;
+                html += `</li>`;
+            }
+            html += '</ul>';
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    function renderValuePanel(label, value, tone) {
+        const hasValue = value !== undefined;
+        const isComplex = hasValue && typeof value === 'object' && value !== null;
+        const valueClass = tone === 'old' ? 'value-panel--old' : 'value-panel--new';
+
+        let html = `<div class="value-panel ${valueClass}">`;
+        html += `<div class="value-panel-label">${escapeHtml(label)}</div>`;
+
+        if (!hasValue) {
+            html += '<span class="empty-value">Not present</span>';
+        } else if (isComplex) {
+            html += '<details class="json-detail">';
+            html += '<summary>View object</summary>';
+            html += `<pre>${escapeHtml(formatValue(value))}</pre>`;
+            html += '</details>';
+        } else {
+            html += `<code>${escapeHtml(formatValue(value))}</code>`;
+        }
+
+        html += '</div>';
         return html;
     }
 
@@ -249,10 +325,21 @@
     }
 
     function formatValue(value) {
+        if (value === null) {
+            return 'null';
+        }
         if (typeof value === 'object') {
             return JSON.stringify(value, null, 2);
         }
         return String(value);
+    }
+
+    function formatCategory(value) {
+        return formatLabel(value).toUpperCase();
+    }
+
+    function formatLabel(value) {
+        return String(value).replace(/_/g, ' ');
     }
 </script>
 {% endblock %}

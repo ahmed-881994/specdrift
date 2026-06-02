@@ -1805,6 +1805,152 @@ body.repaint-shell {
     text-transform: uppercase;
 }
 
+.spec-path-row,
+.repaint-results-container .spec-path-row {
+    display: grid;
+    gap: 0.45rem;
+    margin-bottom: 0.7rem;
+}
+
+.spec-path-label,
+.repaint-results-container .spec-path-label,
+.value-panel-label,
+.repaint-results-container .value-panel-label {
+    color: var(--rp-label);
+    font-family: var(--rp-font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.spec-path-value,
+.repaint-results-container .spec-path-value {
+    display: block;
+    max-width: 100%;
+    padding: 0.55rem 0.65rem;
+    color: var(--rp-info);
+    background: rgba(127, 179, 255, 0.1);
+    border: 1px solid rgba(127, 179, 255, 0.24);
+    font-family: var(--rp-font-mono);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.detail-chip-list,
+.repaint-results-container .detail-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.7rem 0 0;
+}
+
+.detail-chip,
+.repaint-results-container .detail-chip {
+    display: inline-flex;
+    max-width: 100%;
+    gap: 0.4rem;
+    align-items: center;
+    padding: 0.32rem 0.5rem;
+    color: var(--rp-muted);
+    background: var(--rp-ink-2);
+    border: 1px solid var(--rp-rule);
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+
+.detail-chip span,
+.repaint-results-container .detail-chip span {
+    color: var(--rp-label);
+    font-family: var(--rp-font-mono);
+    text-transform: uppercase;
+}
+
+.detail-chip strong,
+.repaint-results-container .detail-chip strong {
+    min-width: 0;
+    color: var(--rp-text);
+    font-family: var(--rp-font-mono);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.value-diff-grid,
+.repaint-results-container .value-diff-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+}
+
+.value-panel,
+.repaint-results-container .value-panel {
+    min-width: 0;
+    padding: 0.65rem;
+    background: var(--rp-ink-2);
+    border: 1px solid var(--rp-rule);
+}
+
+.value-panel--old,
+.repaint-results-container .value-panel--old {
+    border-color: rgba(255, 107, 107, 0.28);
+}
+
+.value-panel--new,
+.repaint-results-container .value-panel--new {
+    border-color: rgba(64, 214, 164, 0.28);
+}
+
+.value-panel code,
+.repaint-results-container .value-panel code,
+.empty-value,
+.repaint-results-container .empty-value {
+    display: block;
+    margin-top: 0.45rem;
+    color: var(--rp-text);
+    font-family: var(--rp-font-mono);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.empty-value,
+.repaint-results-container .empty-value {
+    color: var(--rp-label);
+}
+
+.json-detail,
+.repaint-results-container .json-detail {
+    margin-top: 0.45rem;
+}
+
+.json-detail summary,
+.repaint-results-container .json-detail summary {
+    cursor: pointer;
+    color: var(--rp-text);
+    font-family: var(--rp-font-mono);
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+
+.json-detail pre,
+.repaint-results-container .json-detail pre {
+    max-height: 16rem;
+    margin: 0.55rem 0 0;
+    padding: 0.65rem;
+    color: var(--rp-text);
+    background: rgba(12, 17, 23, 0.86);
+    border: 1px solid var(--rp-rule);
+    font-family: var(--rp-font-mono);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    overflow: auto;
+    white-space: pre;
+}
+
 .detail-list,
 .repaint-results-container .detail-list {
     display: grid;
@@ -1995,6 +2141,24 @@ body.repaint-shell {
     .summary-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .value-diff-grid,
+    .repaint-results-container .value-diff-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-chip,
+    .repaint-results-container .detail-chip {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .spec-path-value,
+    .repaint-results-container .spec-path-value,
+    .json-detail pre,
+    .repaint-results-container .json-detail pre {
+        font-size: 0.74rem;
     }
 
     .repaint-editor {

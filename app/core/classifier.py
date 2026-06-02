@@ -13,27 +13,48 @@ class Classifier:
     """Classifies API changes based on rules."""
 
     @staticmethod
-    def classify_endpoint_removal(path: str) -> Change:
+    def _merge_details(
+        base_details: Optional[Dict[str, Any]] = None,
+        extra_details: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Merge change detail dictionaries while omitting empty values."""
+        details = {}
+        for source in (base_details or {}, extra_details or {}):
+            for key, value in source.items():
+                if value is not None and value != "":
+                    details[key] = value
+        return details
+
+    @staticmethod
+    def classify_endpoint_removal(
+        path: str, details: Optional[Dict[str, Any]] = None
+    ) -> Change:
         """Classify endpoint removal as breaking."""
         return Change(
             type="breaking",
             category="endpoint",
             path=path,
             message=get_rule_message("endpoint_removed"),
+            details=Classifier._merge_details(details),
         )
 
     @staticmethod
-    def classify_endpoint_addition(path: str) -> Change:
+    def classify_endpoint_addition(
+        path: str, details: Optional[Dict[str, Any]] = None
+    ) -> Change:
         """Classify endpoint addition as non-breaking."""
         return Change(
             type="non_breaking",
             category="endpoint",
             path=path,
             message=get_rule_message("endpoint_added"),
+            details=Classifier._merge_details(details),
         )
 
     @staticmethod
-    def classify_method_removal(path: str, method: str) -> Change:
+    def classify_method_removal(
+        path: str, method: str, details: Optional[Dict[str, Any]] = None
+    ) -> Change:
         """Classify method removal as breaking."""
         return Change(
             type="breaking",
@@ -41,10 +62,13 @@ class Classifier:
             path=path,
             method=method.upper(),
             message=get_rule_message("method_removed"),
+            details=Classifier._merge_details(details),
         )
 
     @staticmethod
-    def classify_method_addition(path: str, method: str) -> Change:
+    def classify_method_addition(
+        path: str, method: str, details: Optional[Dict[str, Any]] = None
+    ) -> Change:
         """Classify method addition as non-breaking."""
         return Change(
             type="non_breaking",
@@ -52,6 +76,7 @@ class Classifier:
             path=path,
             method=method.upper(),
             message=get_rule_message("method_added"),
+            details=Classifier._merge_details(details),
         )
 
     @staticmethod
@@ -64,10 +89,11 @@ class Classifier:
         param_in: str = "",
         old_type: str = "",
         new_type: str = "",
+        details: Optional[Dict[str, Any]] = None,
     ) -> Change:
         """
         Classify parameter changes.
-        
+
         Args:
             path: The API path
             method: The HTTP method
@@ -77,14 +103,15 @@ class Classifier:
             param_in: Location of parameter (query, path, header, cookie)
             old_type: Old parameter type
             new_type: New parameter type
-            
+
         Returns:
             Classified change
         """
-        details = {}
+        base_details = {}
         if param_in:
-            details["location"] = param_in
-        
+            base_details["location"] = param_in
+        details = Classifier._merge_details(base_details, details)
+
         if change_type == "removed":
             return Change(
                 type="breaking",
@@ -169,24 +196,26 @@ class Classifier:
         change_type: str,
         is_required: bool = False,
         content_type: str = "",
+        details: Optional[Dict[str, Any]] = None,
     ) -> Change:
         """
         Classify request body changes.
-        
+
         Args:
             path: The API path
             method: The HTTP method
             change_type: Type of change (added, removed, made_required, made_optional)
             is_required: Whether the request body is required (for added bodies)
             content_type: Content type of the request body
-            
+
         Returns:
             Classified change
         """
-        details = {}
+        base_details = {}
         if content_type:
-            details["content_type"] = content_type
-        
+            base_details["content_type"] = content_type
+        details = Classifier._merge_details(base_details, details)
+
         if change_type == "removed":
             return Change(
                 type="breaking",
@@ -254,10 +283,11 @@ class Classifier:
         is_required: bool = False,
         old_type: str = "",
         new_type: str = "",
+        details: Optional[Dict[str, Any]] = None,
     ) -> Change:
         """
         Classify schema/field changes.
-        
+
         Args:
             path: The API path
             method: The HTTP method
@@ -267,15 +297,15 @@ class Classifier:
             is_required: Whether the field is required (for added fields)
             old_type: Old field type
             new_type: New field type
-            
+
         Returns:
             Classified change
         """
         # Determine if this is a request or response schema
         is_response = location.startswith("response_")
-        
-        details = {"location": location}
-        
+
+        details = Classifier._merge_details({"location": location}, details)
+
         if change_type == "removed":
             return Change(
                 type="breaking",
@@ -284,7 +314,7 @@ class Classifier:
                 method=method.upper(),
                 field_name=field_name,
                 message=get_rule_message("field_removed"),
-                details=details
+                details=details,
             )
         elif change_type == "added":
             details["required"] = is_required
@@ -297,7 +327,7 @@ class Classifier:
                     method=method.upper(),
                     field_name=field_name,
                     message=get_rule_message("required_field_added"),
-                    details=details
+                    details=details,
                 )
             else:
                 # Optional fields or response fields are non-breaking
@@ -308,7 +338,7 @@ class Classifier:
                     method=method.upper(),
                     field_name=field_name,
                     message=get_rule_message("optional_field_added"),
-                    details=details
+                    details=details,
                 )
         elif change_type == "type_changed":
             if old_type:
@@ -322,7 +352,7 @@ class Classifier:
                 method=method.upper(),
                 field_name=field_name,
                 message=get_rule_message("field_type_changed"),
-                details=details
+                details=details,
             )
         elif change_type == "made_required":
             if not is_response:
@@ -334,7 +364,7 @@ class Classifier:
                     method=method.upper(),
                     field_name=field_name,
                     message=get_rule_message("field_made_required"),
-                    details=details
+                    details=details,
                 )
             else:
                 # Making response field required is potentially breaking
@@ -345,7 +375,7 @@ class Classifier:
                     method=method.upper(),
                     field_name=field_name,
                     message=get_rule_message("field_made_required"),
-                    details=details
+                    details=details,
                 )
         elif change_type == "made_optional":
             return Change(
@@ -355,7 +385,7 @@ class Classifier:
                 method=method.upper(),
                 field_name=field_name,
                 message=get_rule_message("field_made_optional"),
-                details=details
+                details=details,
             )
         else:
             return Change(
@@ -365,27 +395,31 @@ class Classifier:
                 method=method.upper(),
                 field_name=field_name,
                 message="Field changed",
-                details=details
+                details=details,
             )
 
     @staticmethod
     def classify_response_change(
-        path: str, method: str, status_code: str, change_type: str
+        path: str,
+        method: str,
+        status_code: str,
+        change_type: str,
+        details: Optional[Dict[str, Any]] = None,
     ) -> Change:
         """
         Classify response changes.
-        
+
         Args:
             path: The API path
             method: The HTTP method
             status_code: The HTTP status code
             change_type: Type of change (added, removed)
-            
+
         Returns:
             Classified change
         """
-        details = {"status_code": status_code}
-        
+        details = Classifier._merge_details({"status_code": status_code}, details)
+
         if change_type == "removed":
             if status_code.startswith("2"):
                 return Change(

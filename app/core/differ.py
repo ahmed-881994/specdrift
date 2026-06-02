@@ -22,20 +22,20 @@ class Differ:
     def diff(self, old_spec: Dict[str, Any], new_spec: Dict[str, Any]) -> DiffResult:
         """
         Compare two specifications and return diff result.
-        
+
         Args:
             old_spec: The original specification
             new_spec: The new specification
-            
+
         Returns:
             DiffResult containing changes and metadata
         """
         self.changes = []
-        
+
         # Extract version information before normalization
         self.old_version = self._extract_version(old_spec)
         self.new_version = self._extract_version(new_spec)
-        
+
         # Normalize both specs
         old_normalized = Normalizer.normalize(old_spec)
         new_normalized = Normalizer.normalize(new_spec)
@@ -58,37 +58,37 @@ class Differ:
             summary=summary,
             changes=self.changes,
             old_version=self.old_version,
-            new_version=self.new_version
+            new_version=self.new_version,
         )
 
     @staticmethod
     def _extract_version(spec: Dict[str, Any]) -> Optional[str]:
         """
         Extract version from specification.
-        
+
         Args:
             spec: The API specification
-            
+
         Returns:
             Version string or None
         """
         # Try info.version first (OpenAPI standard location)
         info = spec.get("info", {})
         version = info.get("version")
-        
+
         if version:
             # Combine title with version if available
             title = info.get("title", "")
             if title:
                 return f"{title} v{version}"
             return f"v{version}"
-        
+
         return None
 
     def _create_summary(self) -> Dict[str, int]:
         """
         Create summary statistics of changes.
-        
+
         Returns:
             Dictionary with counts of each change type
         """
@@ -96,9 +96,9 @@ class Differ:
             "breaking": 0,
             "potentially_breaking": 0,
             "non_breaking": 0,
-            "total": len(self.changes)
+            "total": len(self.changes),
         }
-        
+
         for change in self.changes:
             if change.type == "breaking":
                 summary["breaking"] += 1
@@ -106,7 +106,7 @@ class Differ:
                 summary["potentially_breaking"] += 1
             elif change.type == "non_breaking":
                 summary["non_breaking"] += 1
-        
+
         return summary
 
     def _diff_endpoints(
@@ -116,12 +116,20 @@ class Differ:
         # Removed endpoints
         for path in old_paths:
             if path not in new_paths:
-                self.changes.append(Classifier.classify_endpoint_removal(path))
+                self.changes.append(
+                    Classifier.classify_endpoint_removal(
+                        path, details={"schema_path": self._path_item_pointer(path)}
+                    )
+                )
 
         # Added endpoints
         for path in new_paths:
             if path not in old_paths:
-                self.changes.append(Classifier.classify_endpoint_addition(path))
+                self.changes.append(
+                    Classifier.classify_endpoint_addition(
+                        path, details={"schema_path": self._path_item_pointer(path)}
+                    )
+                )
 
     def _diff_operations(
         self, old_paths: Dict[str, Any], new_paths: Dict[str, Any]
@@ -143,14 +151,26 @@ class Differ:
             for method in old_methods:
                 if method not in new_methods:
                     self.changes.append(
-                        Classifier.classify_method_removal(path, method)
+                        Classifier.classify_method_removal(
+                            path,
+                            method,
+                            details={
+                                "schema_path": self._operation_pointer(path, method)
+                            },
+                        )
                     )
 
             # Added methods
             for method in new_methods:
                 if method not in old_methods:
                     self.changes.append(
-                        Classifier.classify_method_addition(path, method)
+                        Classifier.classify_method_addition(
+                            path,
+                            method,
+                            details={
+                                "schema_path": self._operation_pointer(path, method)
+                            },
+                        )
                     )
 
             # Changed methods
@@ -195,7 +215,17 @@ class Differ:
                 if param_name not in new_in_params:
                     self.changes.append(
                         Classifier.classify_parameter_change(
-                            path, method, param_name, "removed", param_in=param_in
+                            path,
+                            method,
+                            param_name,
+                            "removed",
+                            param_in=param_in,
+                            details={
+                                "schema_path": self._parameter_pointer(
+                                    path, method, param_in, param_name
+                                ),
+                                "old_value": old_in_params[param_name],
+                            },
                         )
                     )
 
@@ -205,7 +235,18 @@ class Differ:
                     is_required = new_in_params[param_name].get("required", False)
                     self.changes.append(
                         Classifier.classify_parameter_change(
-                            path, method, param_name, "added", is_required, param_in=param_in
+                            path,
+                            method,
+                            param_name,
+                            "added",
+                            is_required,
+                            param_in=param_in,
+                            details={
+                                "schema_path": self._parameter_pointer(
+                                    path, method, param_in, param_name
+                                ),
+                                "new_value": new_in_params[param_name],
+                            },
                         )
                     )
 
@@ -218,32 +259,63 @@ class Differ:
                     # Compare schemas (already normalized to use schema wrapper)
                     old_schema = old_param.get("schema", {})
                     new_schema = new_param.get("schema", {})
-                    
+
                     old_type = old_schema.get("type", "")
                     new_type = new_schema.get("type", "")
 
                     if old_type != new_type and old_type and new_type:
                         self.changes.append(
                             Classifier.classify_parameter_change(
-                                path, method, param_name, "type_changed",
-                                param_in=param_in, old_type=old_type, new_type=new_type
+                                path,
+                                method,
+                                param_name,
+                                "type_changed",
+                                param_in=param_in,
+                                old_type=old_type,
+                                new_type=new_type,
+                                details={
+                                    "schema_path": f"{self._parameter_pointer(path, method, param_in, param_name)}/schema/type",
+                                    "keyword": "type",
+                                    "old_value": old_type,
+                                    "new_value": new_type,
+                                },
                             )
                         )
-                    
+
                     # Check required status change
                     old_required = old_param.get("required", False)
                     new_required = new_param.get("required", False)
-                    
+
                     if not old_required and new_required:
                         self.changes.append(
                             Classifier.classify_parameter_change(
-                                path, method, param_name, "made_required", param_in=param_in
+                                path,
+                                method,
+                                param_name,
+                                "made_required",
+                                param_in=param_in,
+                                details={
+                                    "schema_path": f"{self._parameter_pointer(path, method, param_in, param_name)}/required",
+                                    "keyword": "required",
+                                    "old_value": old_required,
+                                    "new_value": new_required,
+                                },
                             )
                         )
                     elif old_required and not new_required:
                         self.changes.append(
                             Classifier.classify_parameter_change(
-                                path, method, param_name, "made_optional", param_in=param_in
+                                path,
+                                method,
+                                param_name,
+                                "made_optional",
+                                param_in=param_in,
+                                details={
+                                    "schema_path": f"{self._parameter_pointer(path, method, param_in, param_name)}/required",
+                                    "keyword": "required",
+                                    "old_value": old_required,
+                                    "new_value": new_required,
+                                },
                             )
                         )
 
@@ -263,16 +335,35 @@ class Differ:
         if old_body and not new_body:
             self.changes.append(
                 Classifier.classify_request_body_change(
-                    path, method, "removed", content_type=old_content_type
+                    path,
+                    method,
+                    "removed",
+                    content_type=old_content_type,
+                    details={
+                        "schema_path": self._request_body_pointer(
+                            path, method, old_content_type
+                        ),
+                        "old_value": old_body,
+                    },
                 )
             )
             return
-        
+
         if not old_body and new_body:
             is_required = new_body.get("required", False)
             self.changes.append(
                 Classifier.classify_request_body_change(
-                    path, method, "added", is_required, content_type=new_content_type
+                    path,
+                    method,
+                    "added",
+                    is_required,
+                    content_type=new_content_type,
+                    details={
+                        "schema_path": self._request_body_pointer(
+                            path, method, new_content_type
+                        ),
+                        "new_value": new_body,
+                    },
                 )
             )
             return
@@ -290,22 +381,47 @@ class Differ:
         # Check required status change
         old_required = old_body.get("required", False)
         new_required = new_body.get("required", False)
-        
+
         if not old_required and new_required:
             self.changes.append(
                 Classifier.classify_request_body_change(
-                    path, method, "made_required", content_type=content_type
+                    path,
+                    method,
+                    "made_required",
+                    content_type=content_type,
+                    details={
+                        "schema_path": f"{self._request_body_pointer(path, method, content_type)}/required",
+                        "keyword": "required",
+                        "old_value": old_required,
+                        "new_value": new_required,
+                    },
                 )
             )
         elif old_required and not new_required:
             self.changes.append(
                 Classifier.classify_request_body_change(
-                    path, method, "made_optional", content_type=content_type
+                    path,
+                    method,
+                    "made_optional",
+                    content_type=content_type,
+                    details={
+                        "schema_path": f"{self._request_body_pointer(path, method, content_type)}/required",
+                        "keyword": "required",
+                        "old_value": old_required,
+                        "new_value": new_required,
+                    },
                 )
             )
 
         # Diff schema properties
-        self._diff_schema(path, method, old_schema, new_schema, "request_body")
+        self._diff_schema(
+            path,
+            method,
+            old_schema,
+            new_schema,
+            "request_body",
+            self._request_schema_pointer(path, method, content_type),
+        )
 
     def _diff_schema(
         self,
@@ -314,6 +430,7 @@ class Differ:
         old_schema: Dict[str, Any],
         new_schema: Dict[str, Any],
         location: str = "request_body",
+        schema_path: str = "",
     ) -> None:
         """Detect schema property changes."""
         old_props = old_schema.get("properties", {})
@@ -326,7 +443,17 @@ class Differ:
             if prop_name not in new_props:
                 self.changes.append(
                     Classifier.classify_schema_change(
-                        path, method, prop_name, "removed", location
+                        path,
+                        method,
+                        prop_name,
+                        "removed",
+                        location,
+                        details={
+                            "schema_path": self._schema_property_pointer(
+                                schema_path, prop_name
+                            ),
+                            "old_value": old_props[prop_name],
+                        },
                     )
                 )
 
@@ -336,7 +463,18 @@ class Differ:
                 is_required = prop_name in new_required
                 self.changes.append(
                     Classifier.classify_schema_change(
-                        path, method, prop_name, "added", location, is_required
+                        path,
+                        method,
+                        prop_name,
+                        "added",
+                        location,
+                        is_required,
+                        details={
+                            "schema_path": self._schema_property_pointer(
+                                schema_path, prop_name
+                            ),
+                            "new_value": new_props[prop_name],
+                        },
                     )
                 )
 
@@ -349,25 +487,56 @@ class Differ:
                 if old_prop_type != new_prop_type and old_prop_type and new_prop_type:
                     self.changes.append(
                         Classifier.classify_schema_change(
-                            path, method, prop_name, "type_changed", location,
-                            old_type=old_prop_type, new_type=new_prop_type
+                            path,
+                            method,
+                            prop_name,
+                            "type_changed",
+                            location,
+                            old_type=old_prop_type,
+                            new_type=new_prop_type,
+                            details={
+                                "schema_path": f"{self._schema_property_pointer(schema_path, prop_name)}/type",
+                                "keyword": "type",
+                                "old_value": old_prop_type,
+                                "new_value": new_prop_type,
+                            },
                         )
                     )
-                
+
                 # Check if property was made required or optional
                 was_required = prop_name in old_required
                 is_required = prop_name in new_required
-                
+
                 if not was_required and is_required:
                     self.changes.append(
                         Classifier.classify_schema_change(
-                            path, method, prop_name, "made_required", location
+                            path,
+                            method,
+                            prop_name,
+                            "made_required",
+                            location,
+                            details={
+                                "schema_path": f"{schema_path}/required",
+                                "keyword": "required",
+                                "old_value": sorted(old_required),
+                                "new_value": sorted(new_required),
+                            },
                         )
                     )
                 elif was_required and not is_required:
                     self.changes.append(
                         Classifier.classify_schema_change(
-                            path, method, prop_name, "made_optional", location
+                            path,
+                            method,
+                            prop_name,
+                            "made_optional",
+                            location,
+                            details={
+                                "schema_path": f"{schema_path}/required",
+                                "keyword": "required",
+                                "old_value": sorted(old_required),
+                                "new_value": sorted(new_required),
+                            },
                         )
                     )
 
@@ -382,7 +551,7 @@ class Differ:
         if content:
             return next(iter(content.keys()))
         return ""
-    
+
     def _diff_responses(
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
     ) -> None:
@@ -395,7 +564,16 @@ class Differ:
             if status_code not in new_responses:
                 self.changes.append(
                     Classifier.classify_response_change(
-                        path, method, status_code, "removed"
+                        path,
+                        method,
+                        status_code,
+                        "removed",
+                        details={
+                            "schema_path": self._response_pointer(
+                                path, method, status_code
+                            ),
+                            "old_value": old_responses[status_code],
+                        },
                     )
                 )
 
@@ -404,24 +582,42 @@ class Differ:
             if status_code not in old_responses:
                 self.changes.append(
                     Classifier.classify_response_change(
-                        path, method, status_code, "added"
+                        path,
+                        method,
+                        status_code,
+                        "added",
+                        details={
+                            "schema_path": self._response_pointer(
+                                path, method, status_code
+                            ),
+                            "new_value": new_responses[status_code],
+                        },
                     )
                 )
-        
+
         # Changed responses (schema changes)
         for status_code in old_responses:
             if status_code in new_responses:
                 old_response = old_responses[status_code]
                 new_response = new_responses[status_code]
-                
+
                 # Extract schemas from responses
                 old_schema = self._extract_schema_from_response(old_response)
                 new_schema = self._extract_schema_from_response(new_response)
-                
+                content_type = self._get_primary_content_type(
+                    new_response
+                ) or self._get_primary_content_type(old_response)
+
                 if old_schema and new_schema:
                     self._diff_schema(
-                        path, method, old_schema, new_schema, 
-                        f"response_{status_code}"
+                        path,
+                        method,
+                        old_schema,
+                        new_schema,
+                        f"response_{status_code}",
+                        self._response_schema_pointer(
+                            path, method, status_code, content_type
+                        ),
                     )
 
     @staticmethod
@@ -440,7 +636,7 @@ class Differ:
                 if schema:
                     return schema
         return {}
-    
+
     @staticmethod
     def _extract_schema_from_response(
         response: Dict[str, Any],
@@ -457,3 +653,66 @@ class Differ:
                 if schema:
                     return schema
         return {}
+
+    @staticmethod
+    def _json_pointer_escape(value: str) -> str:
+        """Escape a path segment for JSON Pointer."""
+        return value.replace("~", "~0").replace("/", "~1")
+
+    @classmethod
+    def _path_item_pointer(cls, path: str) -> str:
+        """Return a stable pointer for an OpenAPI path item."""
+        return f"#/paths/{cls._json_pointer_escape(path)}"
+
+    @classmethod
+    def _operation_pointer(cls, path: str, method: str) -> str:
+        """Return a stable pointer for an OpenAPI operation."""
+        return f"{cls._path_item_pointer(path)}/{method.lower()}"
+
+    @classmethod
+    def _parameter_pointer(
+        cls, path: str, method: str, param_in: str, param_name: str
+    ) -> str:
+        """Return a stable identity pointer for a normalized parameter."""
+        escaped_location = cls._json_pointer_escape(param_in)
+        escaped_name = cls._json_pointer_escape(param_name)
+        return f"{cls._operation_pointer(path, method)}/parameters/{escaped_location}/{escaped_name}"
+
+    @classmethod
+    def _request_body_pointer(
+        cls, path: str, method: str, content_type: str = ""
+    ) -> str:
+        """Return a stable pointer for a request body or one of its media types."""
+        pointer = f"{cls._operation_pointer(path, method)}/requestBody"
+        if content_type:
+            pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
+        return pointer
+
+    @classmethod
+    def _request_schema_pointer(
+        cls, path: str, method: str, content_type: str = ""
+    ) -> str:
+        """Return a stable pointer for a request body schema."""
+        return f"{cls._request_body_pointer(path, method, content_type)}/schema"
+
+    @classmethod
+    def _response_pointer(cls, path: str, method: str, status_code: str) -> str:
+        """Return a stable pointer for a response."""
+        return f"{cls._operation_pointer(path, method)}/responses/{cls._json_pointer_escape(status_code)}"
+
+    @classmethod
+    def _response_schema_pointer(
+        cls, path: str, method: str, status_code: str, content_type: str = ""
+    ) -> str:
+        """Return a stable pointer for a response schema."""
+        pointer = cls._response_pointer(path, method, status_code)
+        if content_type:
+            pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
+        return f"{pointer}/schema"
+
+    @classmethod
+    def _schema_property_pointer(cls, schema_path: str, prop_name: str) -> str:
+        """Return a pointer for a property under a schema."""
+        if not schema_path:
+            return f"#/properties/{cls._json_pointer_escape(prop_name)}"
+        return f"{schema_path}/properties/{cls._json_pointer_escape(prop_name)}"
