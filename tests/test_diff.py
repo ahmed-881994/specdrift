@@ -346,6 +346,57 @@ class TestDiffer:
         assert param_changes[0].details.get("old_type") == "string"
         assert param_changes[0].details.get("new_type") == "integer"
 
+    def test_detect_openapi31_parameter_type_array_change(self):
+        """Test comparing OpenAPI 3.1 type arrays as schema type sets."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "id",
+                                "in": "query",
+                                "schema": {"type": ["string", "null"]},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "id",
+                                "in": "query",
+                                "schema": {"type": ["integer", "null"]},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        param_changes = [
+            c
+            for c in result.changes
+            if c.category == "parameter" and c.type == "breaking"
+        ]
+        assert len(param_changes) == 1
+        assert param_changes[0].details.get("old_type") == ["string", "null"]
+        assert param_changes[0].details.get("new_type") == ["integer", "null"]
+
     def test_parameter_type_change_includes_reporting_details(self):
         """Test that parameter changes include stable reporting metadata."""
         old_spec = {
@@ -682,6 +733,70 @@ class TestDiffer:
         assert len(schema_changes) == 1
         assert schema_changes[0].details.get("old_type") == "string"
         assert schema_changes[0].details.get("new_type") == "integer"
+
+    def test_detect_openapi30_nullable_field_type_change(self):
+        """Test that OpenAPI 3.0 nullable is compared as a type set."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "nickname": {"type": "string"}
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "nickname": {
+                                                "type": "string",
+                                                "nullable": True,
+                                            }
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        differ = Differ()
+        result = differ.diff(old_spec, new_spec)
+
+        schema_changes = [
+            c
+            for c in result.changes
+            if c.category == "schema" and c.field_name == "nickname"
+        ]
+        assert len(schema_changes) == 1
+        assert schema_changes[0].details.get("old_type") == "string"
+        assert schema_changes[0].details.get("new_type") == ["string", "null"]
 
     def test_schema_change_includes_reporting_details(self):
         """Test that schema property changes include stable reporting metadata."""

@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 from app.models.change import Change, DiffResult
 from app.core.classifier import Classifier
 from app.core.normalizer import Normalizer
+from app.core.schema_utils import schema_type_set
 
 
 class Differ:
@@ -260,10 +261,12 @@ class Differ:
                     old_schema = old_param.get("schema", {})
                     new_schema = new_param.get("schema", {})
 
-                    old_type = old_schema.get("type", "")
-                    new_type = new_schema.get("type", "")
+                    old_type = schema_type_set(old_schema)
+                    new_type = schema_type_set(new_schema)
 
                     if old_type != new_type and old_type and new_type:
+                        old_type_value = self._format_schema_type(old_type)
+                        new_type_value = self._format_schema_type(new_type)
                         self.changes.append(
                             Classifier.classify_parameter_change(
                                 path,
@@ -271,13 +274,13 @@ class Differ:
                                 param_name,
                                 "type_changed",
                                 param_in=param_in,
-                                old_type=old_type,
-                                new_type=new_type,
+                                old_type=old_type_value,
+                                new_type=new_type_value,
                                 details={
                                     "schema_path": f"{self._parameter_pointer(path, method, param_in, param_name)}/schema/type",
                                     "keyword": "type",
-                                    "old_value": old_type,
-                                    "new_value": new_type,
+                                    "old_value": old_type_value,
+                                    "new_value": new_type_value,
                                 },
                             )
                         )
@@ -481,10 +484,12 @@ class Differ:
         # Changed property types
         for prop_name in old_props:
             if prop_name in new_props:
-                old_prop_type = old_props[prop_name].get("type", "")
-                new_prop_type = new_props[prop_name].get("type", "")
+                old_prop_type = schema_type_set(old_props[prop_name])
+                new_prop_type = schema_type_set(new_props[prop_name])
 
                 if old_prop_type != new_prop_type and old_prop_type and new_prop_type:
+                    old_type_value = self._format_schema_type(old_prop_type)
+                    new_type_value = self._format_schema_type(new_prop_type)
                     self.changes.append(
                         Classifier.classify_schema_change(
                             path,
@@ -492,13 +497,13 @@ class Differ:
                             prop_name,
                             "type_changed",
                             location,
-                            old_type=old_prop_type,
-                            new_type=new_prop_type,
+                            old_type=old_type_value,
+                            new_type=new_type_value,
                             details={
                                 "schema_path": f"{self._schema_property_pointer(schema_path, prop_name)}/type",
                                 "keyword": "type",
-                                "old_value": old_prop_type,
-                                "new_value": new_prop_type,
+                                "old_value": old_type_value,
+                                "new_value": new_type_value,
                             },
                         )
                     )
@@ -551,6 +556,16 @@ class Differ:
         if content:
             return next(iter(content.keys()))
         return ""
+
+    @staticmethod
+    def _format_schema_type(types: set[str]) -> Any:
+        """Format a schema type set for stable result details."""
+        ordered = sorted(type_name for type_name in types if type_name != "null")
+        if "null" in types:
+            ordered.append("null")
+        if len(ordered) == 1:
+            return ordered[0]
+        return ordered
 
     def _diff_responses(
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]

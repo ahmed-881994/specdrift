@@ -5,8 +5,9 @@ Normalizes OpenAPI v3 and Swagger v2 specifications to a common structure
 for consistent diffing.
 """
 
-import json
 from typing import Any, Dict, List, Optional
+
+from app.core.schema_utils import normalize_nullable_schema
 
 
 class Normalizer:
@@ -41,7 +42,7 @@ class Normalizer:
             "info": spec.get("info", {}),
             "servers": spec.get("servers", []),
             "paths": Normalizer._normalize_paths(spec.get("paths", {}), is_openapi3=True),
-            "components": spec.get("components", {}),
+            "components": Normalizer._normalize_components(spec.get("components", {})),
         }
         return normalized
 
@@ -182,7 +183,9 @@ class Normalizer:
         # Handle request body
         if is_openapi3:
             if "requestBody" in operation:
-                normalized["requestBody"] = operation["requestBody"]
+                normalized["requestBody"] = Normalizer._normalize_request_body(
+                    operation["requestBody"]
+                )
         else:
             # Convert Swagger 2.0 body parameter to requestBody
             if body_param:
@@ -221,7 +224,7 @@ class Normalizer:
 
         if is_openapi3:
             # Already has schema wrapper
-            normalized["schema"] = param.get("schema", {})
+            normalized["schema"] = normalize_nullable_schema(param.get("schema", {}))
         else:
             # Convert Swagger 2.0 format to schema wrapper
             schema = {}
@@ -234,7 +237,7 @@ class Normalizer:
             if "collectionFormat" in param:
                 schema["collectionFormat"] = param["collectionFormat"]
             
-            normalized["schema"] = schema
+            normalized["schema"] = normalize_nullable_schema(schema)
 
         return normalized
 
@@ -254,7 +257,7 @@ class Normalizer:
             RequestBody object
         """
         content = {}
-        schema = body_param.get("schema", {})
+        schema = normalize_nullable_schema(body_param.get("schema", {}))
         
         for media_type in consumes:
             content[media_type] = {"schema": schema}
@@ -292,7 +295,9 @@ class Normalizer:
             if is_openapi3:
                 # Already has content wrapper
                 if "content" in response:
-                    normalized_response["content"] = response["content"]
+                    normalized_response["content"] = Normalizer._normalize_content_schemas(
+                        response["content"]
+                    )
                 if "headers" in response:
                     normalized_response["headers"] = response["headers"]
             else:
@@ -301,7 +306,7 @@ class Normalizer:
                     content = {}
                     for media_type in produces:
                         content[media_type] = {
-                            "schema": response["schema"]
+                            "schema": normalize_nullable_schema(response["schema"])
                         }
                     normalized_response["content"] = content
                 
@@ -368,3 +373,40 @@ class Normalizer:
             Request body or None
         """
         return operation.get("requestBody")
+
+    @staticmethod
+    def _normalize_components(components: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize schemas inside reusable components."""
+        normalized = {}
+        for key, value in components.items():
+            if key == "schemas" and isinstance(value, dict):
+                normalized[key] = {
+                    name: normalize_nullable_schema(schema)
+                    for name, schema in value.items()
+                }
+            else:
+                normalized[key] = value
+        return normalized
+
+    @staticmethod
+    def _normalize_request_body(request_body: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize schemas inside an OpenAPI 3.x requestBody object."""
+        normalized = dict(request_body)
+        if "content" in normalized:
+            normalized["content"] = Normalizer._normalize_content_schemas(
+                normalized["content"]
+            )
+        return normalized
+
+    @staticmethod
+    def _normalize_content_schemas(content: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize schemas inside a content map."""
+        normalized = {}
+        for media_type, media_type_object in content.items():
+            normalized_media_type = dict(media_type_object)
+            if "schema" in normalized_media_type:
+                normalized_media_type["schema"] = normalize_nullable_schema(
+                    normalized_media_type["schema"]
+                )
+            normalized[media_type] = normalized_media_type
+        return normalized

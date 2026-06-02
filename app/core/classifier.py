@@ -87,8 +87,8 @@ class Classifier:
         change_type: str,
         is_required: bool = False,
         param_in: str = "",
-        old_type: str = "",
-        new_type: str = "",
+        old_type: Any = "",
+        new_type: Any = "",
         details: Optional[Dict[str, Any]] = None,
     ) -> Change:
         """
@@ -281,8 +281,8 @@ class Classifier:
         change_type: str,
         location: str = "request_body",
         is_required: bool = False,
-        old_type: str = "",
-        new_type: str = "",
+        old_type: Any = "",
+        new_type: Any = "",
         details: Optional[Dict[str, Any]] = None,
     ) -> Change:
         """

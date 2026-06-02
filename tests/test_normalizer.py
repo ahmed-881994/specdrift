@@ -47,6 +47,29 @@ class TestNormalize:
         assert "components" in result
         assert "paths" in result
 
+    def test_normalize_openapi_3_nullable_component_schema(self):
+        """Test that OpenAPI 3.0 nullable is normalized in components."""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "Test API", "version": "1.0.0"},
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "nickname": {"type": "string", "nullable": True}
+                        },
+                    }
+                }
+            },
+        }
+
+        result = Normalizer.normalize(spec)
+
+        nickname = result["components"]["schemas"]["User"]["properties"]["nickname"]
+        assert nickname == {"type": ["string", "null"]}
+
     def test_normalize_unknown_format(self):
         """Test that unknown format raises ValueError."""
         spec = {"unknown": "format"}
@@ -283,6 +306,30 @@ class TestNormalizeOperation:
         assert "requestBody" in result
         assert result["requestBody"]["required"] == True
 
+    def test_normalize_operation_openapi3_nullable_requestbody(self):
+        """Test normalizing nullable schemas inside OpenAPI 3 request bodies."""
+        operation = {
+            "summary": "Create user",
+            "requestBody": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nickname": {"type": "string", "nullable": True}
+                            },
+                        }
+                    }
+                }
+            },
+            "responses": {},
+        }
+
+        result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
+        schema = result["requestBody"]["content"]["application/json"]["schema"]
+
+        assert schema["properties"]["nickname"] == {"type": ["string", "null"]}
+
     def test_normalize_operation_with_security(self):
         """Test normalizing operation with security."""
         operation = {
@@ -333,6 +380,18 @@ class TestNormalizeParameter:
         assert result["required"] == False
         assert result["schema"]["type"] == "integer"
         assert result["schema"]["minimum"] == 1
+
+    def test_normalize_openapi3_nullable_parameter(self):
+        """Test normalizing OpenAPI 3.0 nullable parameter schemas."""
+        param = {
+            "name": "status",
+            "in": "query",
+            "schema": {"type": "string", "nullable": True},
+        }
+
+        result = Normalizer._normalize_parameter(param, is_openapi3=True)
+
+        assert result["schema"] == {"type": ["string", "null"]}
 
     def test_normalize_swagger2_parameter(self):
         """Test normalizing Swagger 2.0 parameter (needs schema wrapper)."""
@@ -469,6 +528,29 @@ class TestNormalizeResponses:
         assert "200" in result
         assert result["200"]["description"] == "Success"
         assert "application/json" in result["200"]["content"]
+
+    def test_normalize_openapi3_nullable_response_schema(self):
+        """Test normalizing nullable schemas inside OpenAPI 3 responses."""
+        responses = {
+            "200": {
+                "description": "Success",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nickname": {"type": "string", "nullable": True}
+                            },
+                        }
+                    }
+                },
+            }
+        }
+
+        result = Normalizer._normalize_responses(responses, [], is_openapi3=True)
+        schema = result["200"]["content"]["application/json"]["schema"]
+
+        assert schema["properties"]["nickname"] == {"type": ["string", "null"]}
 
     def test_normalize_swagger2_responses(self):
         """Test normalizing Swagger 2.0 responses (needs content wrapper)."""
