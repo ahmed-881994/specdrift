@@ -1815,6 +1815,331 @@ class TestDiffer:
         assert result.old_version is not None
         assert result.new_version is not None
 
+    def test_detect_removed_request_media_type(self):
+        """Test detection of removed request body media types."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/uploads": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {"schema": {"type": "object"}},
+                                "multipart/form-data": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "file": {
+                                                "type": "string",
+                                                "format": "binary",
+                                            }
+                                        },
+                                    }
+                                },
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/uploads": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {"schema": {"type": "object"}}
+                            }
+                        },
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        media_changes = [
+            c for c in result.changes if c.category == "media_type"
+        ]
+        assert len(media_changes) == 1
+        assert media_changes[0].type == "breaking"
+        assert media_changes[0].field_name == "multipart/form-data"
+        assert media_changes[0].details["location"] == "request_body"
+
+    def test_detect_added_response_media_type(self):
+        """Test detection of added response media types."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {"type": "object"}
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {"type": "object"}
+                                    },
+                                    "application/xml": {
+                                        "schema": {"type": "object"}
+                                    },
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        media_changes = [
+            c for c in result.changes if c.category == "media_type"
+        ]
+        assert len(media_changes) == 1
+        assert media_changes[0].type == "non_breaking"
+        assert media_changes[0].field_name == "application/xml"
+        assert media_changes[0].details["status_code"] == "200"
+
+    def test_diffs_each_common_response_media_type_schema(self):
+        """Test that shared response content types are diffed independently."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "string"}
+                                            },
+                                        }
+                                    },
+                                    "application/xml": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "legacyId": {"type": "string"}
+                                            },
+                                        }
+                                    },
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "content": {
+                                    "application/json": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "string"}
+                                            },
+                                        }
+                                    },
+                                    "application/xml": {
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "legacyId": {"type": "integer"}
+                                            },
+                                        }
+                                    },
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        schema_changes = [
+            c
+            for c in result.changes
+            if c.category == "schema" and c.field_name == "legacyId"
+        ]
+        assert len(schema_changes) == 1
+        assert schema_changes[0].details["schema_path"].endswith(
+            "/content/application~1xml/schema/properties/legacyId/type"
+        )
+
+    def test_detect_response_header_add_remove_and_schema_change(self):
+        """Test response header additions, removals, and schema changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "headers": {
+                                    "X-Rate-Limit": {
+                                        "schema": {"type": "integer"}
+                                    },
+                                    "X-Deprecated": {
+                                        "schema": {"type": "string"}
+                                    },
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "OK",
+                                "headers": {
+                                    "X-Rate-Limit": {
+                                        "schema": {"type": "string"}
+                                    },
+                                    "X-Trace-Id": {
+                                        "schema": {"type": "string"}
+                                    },
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        removed_header = [
+            c for c in result.changes
+            if c.category == "header" and c.field_name == "X-Deprecated"
+        ]
+        added_header = [
+            c for c in result.changes
+            if c.category == "header" and c.field_name == "X-Trace-Id"
+        ]
+        changed_header_schema = [
+            c for c in result.changes
+            if c.category == "schema" and c.field_name == "X-Rate-Limit"
+        ]
+        assert len(removed_header) == 1
+        assert removed_header[0].type == "potentially_breaking"
+        assert len(added_header) == 1
+        assert added_header[0].type == "non_breaking"
+        assert len(changed_header_schema) == 1
+        assert changed_header_schema[0].details["location"] == "response_200_header"
+
+    def test_detect_parameter_serialization_change(self):
+        """Test OpenAPI parameter serialization attribute changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "ids",
+                                "in": "query",
+                                "style": "form",
+                                "explode": True,
+                                "schema": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "parameters": [
+                            {
+                                "name": "ids",
+                                "in": "query",
+                                "style": "spaceDelimited",
+                                "explode": False,
+                                "schema": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        serialization_changes = [
+            c for c in result.changes
+            if c.category == "parameter_serialization"
+        ]
+        assert len(serialization_changes) == 2
+        assert {c.details["keyword"] for c in serialization_changes} == {
+            "style",
+            "explode",
+        }
+        assert all(c.type == "breaking" for c in serialization_changes)
+
     def test_detect_openapi_31_json_schema_dialect_change(self):
         """Test detection of root JSON Schema dialect changes."""
         old_spec = {

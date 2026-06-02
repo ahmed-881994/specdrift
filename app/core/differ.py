@@ -615,6 +615,10 @@ class Differ:
                         param_name,
                     )
 
+                    self._diff_parameter_serialization(
+                        path, method, param_in, param_name, old_param, new_param
+                    )
+
                     # Check required status change
                     old_required = old_param.get("required", False)
                     new_required = new_param.get("required", False)
@@ -704,13 +708,6 @@ class Differ:
         if not old_body or not new_body:
             return
 
-        # Extract schemas from content
-        old_schema = self._extract_schema_from_request_body(old_body)
-        new_schema = self._extract_schema_from_request_body(new_body)
-
-        if not old_schema or not new_schema:
-            return
-
         # Check required status change
         old_required = old_body.get("required", False)
         new_required = new_body.get("required", False)
@@ -746,15 +743,7 @@ class Differ:
                 )
             )
 
-        # Diff schema properties
-        self._diff_schema(
-            path,
-            method,
-            old_schema,
-            new_schema,
-            "request_body",
-            self._request_schema_pointer(path, method, content_type),
-        )
+        self._diff_request_content(path, method, old_body, new_body)
 
     def _diff_schema(
         self,
@@ -1624,24 +1613,276 @@ class Differ:
                 old_response = old_responses[status_code]
                 new_response = new_responses[status_code]
 
-                # Extract schemas from responses
-                old_schema = self._extract_schema_from_response(old_response)
-                new_schema = self._extract_schema_from_response(new_response)
-                content_type = self._get_primary_content_type(
-                    new_response
-                ) or self._get_primary_content_type(old_response)
+                self._diff_response_content(
+                    path, method, status_code, old_response, new_response
+                )
+                self._diff_response_headers(
+                    path, method, status_code, old_response, new_response
+                )
 
-                if old_schema and new_schema:
-                    self._diff_schema(
+    def _diff_parameter_serialization(
+        self,
+        path: str,
+        method: str,
+        param_in: str,
+        param_name: str,
+        old_param: Dict[str, Any],
+        new_param: Dict[str, Any],
+    ) -> None:
+        """Detect OpenAPI parameter serialization attribute changes."""
+        for keyword in (
+            "style",
+            "explode",
+            "allowReserved",
+            "allowEmptyValue",
+            "collectionFormat",
+            "content",
+        ):
+            old_has_keyword = keyword in old_param
+            new_has_keyword = keyword in new_param
+            old_value = old_param.get(keyword)
+            new_value = new_param.get(keyword)
+
+            if not old_has_keyword and not new_has_keyword:
+                continue
+            if old_has_keyword and new_has_keyword and old_value == new_value:
+                continue
+
+            self.changes.append(
+                Classifier.classify_parameter_serialization_change(
+                    path,
+                    method,
+                    param_name,
+                    param_in,
+                    keyword,
+                    old_value if old_has_keyword else None,
+                    new_value if new_has_keyword else None,
+                    details={
+                        "schema_path": self._keyword_pointer(
+                            self._parameter_pointer(path, method, param_in, param_name),
+                            keyword,
+                        )
+                    },
+                )
+            )
+
+    def _diff_request_content(
+        self,
+        path: str,
+        method: str,
+        old_body: Dict[str, Any],
+        new_body: Dict[str, Any],
+    ) -> None:
+        """Detect request body media type and per-media schema changes."""
+        old_content = old_body.get("content", {})
+        new_content = new_body.get("content", {})
+        self._diff_content_media_types(
+            path,
+            method,
+            old_content,
+            new_content,
+            location="request_body",
+            pointer_builder=lambda content_type: self._request_body_pointer(
+                path, method, content_type
+            ),
+        )
+
+        for content_type in old_content:
+            if content_type not in new_content:
+                continue
+
+            old_schema = old_content[content_type].get("schema", {})
+            new_schema = new_content[content_type].get("schema", {})
+            if old_schema and new_schema:
+                self._diff_schema(
+                    path,
+                    method,
+                    old_schema,
+                    new_schema,
+                    "request_body",
+                    self._request_schema_pointer(path, method, content_type),
+                )
+
+    def _diff_response_content(
+        self,
+        path: str,
+        method: str,
+        status_code: str,
+        old_response: Dict[str, Any],
+        new_response: Dict[str, Any],
+    ) -> None:
+        """Detect response media type and per-media schema changes."""
+        old_content = old_response.get("content", {})
+        new_content = new_response.get("content", {})
+        self._diff_content_media_types(
+            path,
+            method,
+            old_content,
+            new_content,
+            location="response",
+            status_code=status_code,
+            pointer_builder=lambda content_type: self._response_content_pointer(
+                path, method, status_code, content_type
+            ),
+        )
+
+        for content_type in old_content:
+            if content_type not in new_content:
+                continue
+
+            old_schema = old_content[content_type].get("schema", {})
+            new_schema = new_content[content_type].get("schema", {})
+            if old_schema and new_schema:
+                self._diff_schema(
+                    path,
+                    method,
+                    old_schema,
+                    new_schema,
+                    f"response_{status_code}",
+                    self._response_schema_pointer(
+                        path, method, status_code, content_type
+                    ),
+                )
+
+    def _diff_content_media_types(
+        self,
+        path: str,
+        method: str,
+        old_content: Dict[str, Any],
+        new_content: Dict[str, Any],
+        location: str,
+        pointer_builder,
+        status_code: str = "",
+    ) -> None:
+        """Detect media type additions and removals for a content map."""
+        for content_type in old_content:
+            if content_type not in new_content:
+                self.changes.append(
+                    Classifier.classify_media_type_change(
                         path,
                         method,
-                        old_schema,
-                        new_schema,
-                        f"response_{status_code}",
-                        self._response_schema_pointer(
-                            path, method, status_code, content_type
-                        ),
+                        location,
+                        content_type,
+                        "removed",
+                        status_code=status_code,
+                        old_value=old_content[content_type],
+                        details={"schema_path": pointer_builder(content_type)},
                     )
+                )
+
+        for content_type in new_content:
+            if content_type not in old_content:
+                self.changes.append(
+                    Classifier.classify_media_type_change(
+                        path,
+                        method,
+                        location,
+                        content_type,
+                        "added",
+                        status_code=status_code,
+                        new_value=new_content[content_type],
+                        details={"schema_path": pointer_builder(content_type)},
+                    )
+                )
+
+    def _diff_response_headers(
+        self,
+        path: str,
+        method: str,
+        status_code: str,
+        old_response: Dict[str, Any],
+        new_response: Dict[str, Any],
+    ) -> None:
+        """Detect response header additions, removals, and schema changes."""
+        old_headers = old_response.get("headers", {})
+        new_headers = new_response.get("headers", {})
+
+        for header_name in old_headers:
+            if header_name not in new_headers:
+                self.changes.append(
+                    Classifier.classify_response_header_change(
+                        path,
+                        method,
+                        status_code,
+                        header_name,
+                        "removed",
+                        old_value=old_headers[header_name],
+                        details={
+                            "schema_path": self._response_header_pointer(
+                                path, method, status_code, header_name
+                            )
+                        },
+                    )
+                )
+
+        for header_name in new_headers:
+            if header_name not in old_headers:
+                self.changes.append(
+                    Classifier.classify_response_header_change(
+                        path,
+                        method,
+                        status_code,
+                        header_name,
+                        "added",
+                        new_value=new_headers[header_name],
+                        details={
+                            "schema_path": self._response_header_pointer(
+                                path, method, status_code, header_name
+                            )
+                        },
+                    )
+                )
+
+        for header_name in old_headers:
+            if header_name not in new_headers:
+                continue
+            old_header = old_headers[header_name]
+            new_header = new_headers[header_name]
+            header_path = self._response_header_pointer(
+                path, method, status_code, header_name
+            )
+
+            if not isinstance(old_header, dict) or not isinstance(new_header, dict):
+                if old_header != new_header:
+                    self.changes.append(
+                        Classifier.classify_response_header_change(
+                            path,
+                            method,
+                            status_code,
+                            header_name,
+                            "changed",
+                            old_value=old_header,
+                            new_value=new_header,
+                            details={"schema_path": header_path},
+                        )
+                    )
+                continue
+
+            old_schema = old_header.get("schema", {})
+            new_schema = new_header.get("schema", {})
+            if old_schema and new_schema:
+                self._diff_schema(
+                    path,
+                    method,
+                    old_schema,
+                    new_schema,
+                    f"response_{status_code}_header",
+                    f"{header_path}/schema",
+                    header_name,
+                )
+            elif old_header != new_header:
+                self.changes.append(
+                    Classifier.classify_response_header_change(
+                        path,
+                        method,
+                        status_code,
+                        header_name,
+                        "changed",
+                        old_value=old_header,
+                        new_value=new_header,
+                        details={"schema_path": header_path},
+                    )
+                )
 
     @staticmethod
     def _extract_schema_from_request_body(
@@ -1724,14 +1965,31 @@ class Differ:
         return f"{cls._operation_pointer(path, method)}/responses/{cls._json_pointer_escape(status_code)}"
 
     @classmethod
+    def _response_content_pointer(
+        cls, path: str, method: str, status_code: str, content_type: str = ""
+    ) -> str:
+        """Return a stable pointer for a response media type."""
+        pointer = cls._response_pointer(path, method, status_code)
+        if content_type:
+            pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
+        return pointer
+
+    @classmethod
     def _response_schema_pointer(
         cls, path: str, method: str, status_code: str, content_type: str = ""
     ) -> str:
         """Return a stable pointer for a response schema."""
-        pointer = cls._response_pointer(path, method, status_code)
-        if content_type:
-            pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
-        return f"{pointer}/schema"
+        return f"{cls._response_content_pointer(path, method, status_code, content_type)}/schema"
+
+    @classmethod
+    def _response_header_pointer(
+        cls, path: str, method: str, status_code: str, header_name: str
+    ) -> str:
+        """Return a stable pointer for a response header."""
+        return (
+            f"{cls._response_pointer(path, method, status_code)}/headers/"
+            f"{cls._json_pointer_escape(header_name)}"
+        )
 
     @classmethod
     def _component_pointer(cls, component_type: str, component_name: str) -> str:

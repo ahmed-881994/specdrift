@@ -23,6 +23,9 @@ BREAKING_RULES = {
     "enum_value_removed": "Enum value removed",
     "constraint_made_stricter": "Schema constraint made stricter",
     "referenced_component_removed": "Referenced reusable component removed",
+    "request_media_type_removed": "Request media type removed",
+    "response_media_type_removed": "Response media type removed",
+    "parameter_serialization_changed": "Parameter serialization changed",
     "success_response_removed": "Success response (2xx) removed",
 }
 
@@ -35,6 +38,8 @@ POTENTIALLY_BREAKING_RULES = {
     "constraint_changed": "Schema constraint changed",
     "component_removed": "Reusable component removed",
     "component_changed": "Reusable component changed",
+    "response_header_removed": "Response header removed",
+    "response_header_changed": "Response header changed",
     "parameter_made_optional": "Parameter made optional",
     "field_made_optional": "Field made optional",
     "request_body_made_optional": "Request body made optional",
@@ -52,6 +57,9 @@ NON_BREAKING_RULES = {
     "default_value_added": "Default value added",
     "constraint_made_looser": "Schema constraint made less restrictive",
     "component_added": "Reusable component added",
+    "request_media_type_added": "Request media type added",
+    "response_media_type_added": "Response media type added",
+    "response_header_added": "Response header added",
     "metadata_changed": "Metadata-only changes",
 }
 

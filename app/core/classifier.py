@@ -572,3 +572,115 @@ class Classifier:
                 message="Response changed",
                 details=details,
             )
+
+    @staticmethod
+    def classify_media_type_change(
+        path: str,
+        method: str,
+        location: str,
+        content_type: str,
+        change_type: str,
+        status_code: str = "",
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify request or response media type additions/removals."""
+        rule_by_location = {
+            ("request_body", "removed"): "request_media_type_removed",
+            ("request_body", "added"): "request_media_type_added",
+            ("response", "removed"): "response_media_type_removed",
+            ("response", "added"): "response_media_type_added",
+        }
+        rule_type = rule_by_location.get((location, change_type), "constraint_changed")
+        change_details = Classifier._merge_details(
+            {
+                "location": location,
+                "content_type": content_type,
+                "status_code": status_code,
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category="media_type",
+            path=path,
+            method=Classifier._method(method),
+            field_name=content_type,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
+    def classify_response_header_change(
+        path: str,
+        method: str,
+        status_code: str,
+        header_name: str,
+        change_type: str,
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify response header additions, removals, and schema changes."""
+        rule_by_change_type = {
+            "removed": "response_header_removed",
+            "added": "response_header_added",
+            "changed": "response_header_changed",
+        }
+        rule_type = rule_by_change_type.get(change_type, "response_header_changed")
+        change_details = Classifier._merge_details(
+            {
+                "location": "response_header",
+                "status_code": status_code,
+                "header_name": header_name,
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category="header",
+            path=path,
+            method=Classifier._method(method),
+            field_name=header_name,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
+    def classify_parameter_serialization_change(
+        path: str,
+        method: str,
+        param_name: str,
+        param_in: str,
+        keyword: str,
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify request parameter serialization metadata changes."""
+        change_details = Classifier._merge_details(
+            {
+                "location": param_in,
+                "keyword": keyword,
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change("parameter_serialization_changed"),
+            category="parameter_serialization",
+            path=path,
+            method=Classifier._method(method),
+            field_name=param_name,
+            message=get_rule_message("parameter_serialization_changed"),
+            details=change_details,
+        )

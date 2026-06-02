@@ -208,6 +208,12 @@
             if (change.field_name) {
                 const fieldLabel = change.category === 'schema_constraint'
                     ? 'Schema keyword'
+                    : change.category === 'media_type'
+                        ? 'Media type'
+                    : change.category === 'header'
+                        ? 'Header'
+                    : change.category === 'parameter_serialization'
+                        ? 'Parameter'
                     : change.category === 'schema' || change.category === 'component_schema'
                         ? 'Schema node'
                         : change.category === 'component'
@@ -242,7 +248,7 @@
             return '';
         }
 
-        const metadataKeys = ['component_type', 'keyword', 'location', 'content_type', 'status_code', 'required', 'ref'];
+        const metadataKeys = ['component_type', 'keyword', 'location', 'content_type', 'status_code', 'header_name', 'required', 'ref'];
         const handledKeys = new Set(['schema_path', 'old_value', 'new_value', 'impacted_operations', ...metadataKeys]);
         if (
             Object.prototype.hasOwnProperty.call(details, 'old_value') ||

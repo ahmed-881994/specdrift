@@ -224,9 +224,24 @@ class Normalizer:
             "required": param.get("required", False),
         }
 
+        for key in (
+            "style",
+            "explode",
+            "allowReserved",
+            "allowEmptyValue",
+            "example",
+            "examples",
+        ):
+            if key in param:
+                normalized[key] = param[key]
+
         if is_openapi3:
             # Already has schema wrapper
             normalized["schema"] = normalize_nullable_schema(param.get("schema", {}))
+            if "content" in param:
+                normalized["content"] = Normalizer._normalize_content_schemas(
+                    param["content"]
+                )
         else:
             # Convert Swagger 2.0 format to schema wrapper
             schema = {}
@@ -238,6 +253,7 @@ class Normalizer:
             # Handle collection format
             if "collectionFormat" in param:
                 schema["collectionFormat"] = param["collectionFormat"]
+                normalized["collectionFormat"] = param["collectionFormat"]
             
             normalized["schema"] = normalize_nullable_schema(schema)
 
@@ -301,7 +317,9 @@ class Normalizer:
                         response["content"]
                     )
                 if "headers" in response:
-                    normalized_response["headers"] = response["headers"]
+                    normalized_response["headers"] = Normalizer._normalize_headers(
+                        response["headers"], is_openapi3=True
+                    )
             else:
                 # Convert Swagger 2.0 schema to content wrapper
                 if "schema" in response:
@@ -313,7 +331,9 @@ class Normalizer:
                     normalized_response["content"] = content
                 
                 if "headers" in response:
-                    normalized_response["headers"] = response["headers"]
+                    normalized_response["headers"] = Normalizer._normalize_headers(
+                        response["headers"], is_openapi3=False
+                    )
             
             normalized[status_code] = normalized_response
         
@@ -345,8 +365,20 @@ class Normalizer:
                 params[param_in][param_name] = {
                     "required": param.get("required", False),
                     "schema": param.get("schema", {}),
-                    "description": param.get("description", "")
+                    "description": param.get("description", ""),
                 }
+                for key in (
+                    "style",
+                    "explode",
+                    "allowReserved",
+                    "allowEmptyValue",
+                    "collectionFormat",
+                    "content",
+                    "example",
+                    "examples",
+                ):
+                    if key in param:
+                        params[param_in][param_name][key] = param[key]
 
         return params
 
@@ -411,4 +443,55 @@ class Normalizer:
                     normalized_media_type["schema"]
                 )
             normalized[media_type] = normalized_media_type
+        return normalized
+
+    @staticmethod
+    def _normalize_headers(
+        headers: Dict[str, Any], is_openapi3: bool
+    ) -> Dict[str, Any]:
+        """Normalize response header schemas to the same shape as parameters."""
+        normalized = {}
+        for header_name, header in headers.items():
+            if not isinstance(header, dict):
+                normalized[header_name] = header
+                continue
+
+            normalized_header = dict(header)
+            if "$ref" in normalized_header:
+                normalized[header_name] = normalized_header
+                continue
+
+            if is_openapi3:
+                if "schema" in normalized_header:
+                    normalized_header["schema"] = normalize_nullable_schema(
+                        normalized_header["schema"]
+                    )
+                if "content" in normalized_header:
+                    normalized_header["content"] = Normalizer._normalize_content_schemas(
+                        normalized_header["content"]
+                    )
+            else:
+                schema = {}
+                for key in [
+                    "type",
+                    "format",
+                    "items",
+                    "enum",
+                    "default",
+                    "minimum",
+                    "maximum",
+                    "minLength",
+                    "maxLength",
+                    "pattern",
+                    "minItems",
+                    "maxItems",
+                    "collectionFormat",
+                ]:
+                    if key in normalized_header:
+                        schema[key] = normalized_header[key]
+                if schema:
+                    normalized_header["schema"] = normalize_nullable_schema(schema)
+
+            normalized[header_name] = normalized_header
+
         return normalized
