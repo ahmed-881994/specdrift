@@ -18,11 +18,11 @@ class TestNormalize:
             "basePath": "/v1",
             "schemes": ["https"],
             "paths": {},
-            "definitions": {}
+            "definitions": {},
         }
-        
+
         result = Normalizer.normalize(spec)
-        
+
         assert result["version"] == "2.0"
         assert result["info"]["title"] == "Test API"
         assert result["servers"] == [{"url": "https://api.example.com/v1"}]
@@ -36,11 +36,11 @@ class TestNormalize:
             "info": {"title": "Test API", "version": "1.0.0"},
             "servers": [{"url": "https://api.example.com/v1"}],
             "paths": {},
-            "components": {}
+            "components": {},
         }
-        
+
         result = Normalizer.normalize(spec)
-        
+
         assert result["version"] == "3.0.0"
         assert result["info"]["title"] == "Test API"
         assert result["servers"] == [{"url": "https://api.example.com/v1"}]
@@ -59,9 +59,7 @@ class TestNormalize:
                     "post": {
                         "requestBody": {
                             "content": {
-                                "application/json": {
-                                    "schema": {"type": "object"}
-                                }
+                                "application/json": {"schema": {"type": "object"}}
                             }
                         },
                         "responses": {"200": {"description": "OK"}},
@@ -73,7 +71,10 @@ class TestNormalize:
 
         result = Normalizer.normalize(spec)
 
-        assert result["jsonSchemaDialect"] == "https://json-schema.org/draft/2020-12/schema"
+        assert (
+            result["jsonSchemaDialect"]
+            == "https://json-schema.org/draft/2020-12/schema"
+        )
         assert "user.created" in result["webhooks"]
         assert "post" in result["webhooks"]["user.created"]
 
@@ -100,10 +101,56 @@ class TestNormalize:
         nickname = result["components"]["schemas"]["User"]["properties"]["nickname"]
         assert nickname == {"type": ["string", "null"]}
 
+    def test_normalize_phase_8_metadata(self):
+        """Test preserving root, path, and operation metadata for diffing."""
+        spec = {
+            "openapi": "3.0.0",
+            "info": {
+                "title": "Test API",
+                "version": "1.0.0",
+                "contact": {"email": "api@example.com"},
+                "license": {"name": "MIT"},
+            },
+            "servers": [{"url": "https://api.example.com"}],
+            "security": [{"ApiKeyAuth": []}],
+            "tags": [{"name": "users"}],
+            "externalDocs": {"url": "https://docs.example.com"},
+            "paths": {
+                "/users": {
+                    "summary": "Users",
+                    "description": "User collection",
+                    "servers": [{"url": "https://users.example.com"}],
+                    "get": {
+                        "operationId": "listUsers",
+                        "servers": [{"url": "https://read.example.com"}],
+                        "callbacks": {"onEvent": {}},
+                        "externalDocs": {"url": "https://docs.example.com/users"},
+                        "responses": {"200": {"description": "OK"}},
+                    },
+                }
+            },
+            "components": {},
+        }
+
+        result = Normalizer.normalize(spec)
+
+        assert result["security"] == [{"ApiKeyAuth": []}]
+        assert result["tags"] == [{"name": "users"}]
+        assert result["externalDocs"] == {"url": "https://docs.example.com"}
+        assert result["path_metadata"]["/users"]["summary"] == "Users"
+        assert result["path_metadata"]["/users"]["servers"] == [
+            {"url": "https://users.example.com"}
+        ]
+        operation = result["paths"]["/users"]["get"]
+        assert operation["operationId"] == "listUsers"
+        assert operation["servers"] == [{"url": "https://read.example.com"}]
+        assert operation["callbacks"] == {"onEvent": {}}
+        assert operation["externalDocs"] == {"url": "https://docs.example.com/users"}
+
     def test_normalize_unknown_format(self):
         """Test that unknown format raises ValueError."""
         spec = {"unknown": "format"}
-        
+
         with pytest.raises(ValueError, match="Unknown specification format"):
             Normalizer.normalize(spec)
 
@@ -113,50 +160,38 @@ class TestConvertToServers:
 
     def test_convert_single_scheme(self):
         """Test converting with a single scheme."""
-        result = Normalizer._convert_to_servers(
-            "api.example.com",
-            "/v1",
-            ["https"]
-        )
-        
+        result = Normalizer._convert_to_servers("api.example.com", "/v1", ["https"])
+
         assert result == [{"url": "https://api.example.com/v1"}]
 
     def test_convert_multiple_schemes(self):
         """Test converting with multiple schemes."""
         result = Normalizer._convert_to_servers(
-            "api.example.com",
-            "/v1",
-            ["https", "http"]
+            "api.example.com", "/v1", ["https", "http"]
         )
-        
+
         assert len(result) == 2
         assert {"url": "https://api.example.com/v1"} in result
         assert {"url": "http://api.example.com/v1"} in result
 
     def test_convert_no_base_path(self):
         """Test converting without base path."""
-        result = Normalizer._convert_to_servers(
-            "api.example.com",
-            "",
-            ["https"]
-        )
-        
+        result = Normalizer._convert_to_servers("api.example.com", "", ["https"])
+
         assert result == [{"url": "https://api.example.com"}]
 
     def test_convert_no_host(self):
         """Test that empty host returns empty list."""
         result = Normalizer._convert_to_servers("", "/v1", ["https"])
-        
+
         assert result == []
 
     def test_convert_with_port(self):
         """Test converting with port in host."""
         result = Normalizer._convert_to_servers(
-            "api.example.com:8080",
-            "/v1",
-            ["https"]
+            "api.example.com:8080", "/v1", ["https"]
         )
-        
+
         assert result == [{"url": "https://api.example.com:8080/v1"}]
 
 
@@ -166,7 +201,7 @@ class TestNormalizePaths:
     def test_normalize_empty_paths(self):
         """Test normalizing empty paths."""
         result = Normalizer._normalize_paths({}, is_openapi3=True)
-        
+
         assert result == {}
 
     def test_normalize_simple_path_openapi3(self):
@@ -175,13 +210,13 @@ class TestNormalizePaths:
             "/users": {
                 "get": {
                     "summary": "Get users",
-                    "responses": {"200": {"description": "Success"}}
+                    "responses": {"200": {"description": "Success"}},
                 }
             }
         }
-        
+
         result = Normalizer._normalize_paths(paths, is_openapi3=True)
-        
+
         assert "/users" in result
         assert "get" in result["/users"]
         assert result["/users"]["get"]["summary"] == "Get users"
@@ -191,22 +226,17 @@ class TestNormalizePaths:
         paths = {
             "/users/{userId}": {
                 "parameters": [
-                    {
-                        "name": "userId",
-                        "in": "path",
-                        "type": "string",
-                        "required": True
-                    }
+                    {"name": "userId", "in": "path", "type": "string", "required": True}
                 ],
                 "get": {
                     "summary": "Get user",
-                    "responses": {"200": {"description": "Success"}}
-                }
+                    "responses": {"200": {"description": "Success"}},
+                },
             }
         }
-        
+
         result = Normalizer._normalize_paths(paths, is_openapi3=False)
-        
+
         assert "/users/{userId}" in result
         assert "get" in result["/users/{userId}"]
         params = result["/users/{userId}"]["get"]["parameters"]
@@ -220,12 +250,12 @@ class TestNormalizePaths:
             "/users": {
                 "get": {"summary": "Get users", "responses": {}},
                 "post": {"summary": "Create user", "responses": {}},
-                "put": {"summary": "Update user", "responses": {}}
+                "put": {"summary": "Update user", "responses": {}},
             }
         }
-        
+
         result = Normalizer._normalize_paths(paths, is_openapi3=True)
-        
+
         assert len(result["/users"]) == 3
         assert "get" in result["/users"]
         assert "post" in result["/users"]
@@ -238,12 +268,12 @@ class TestNormalizePaths:
                 "get": {"summary": "Get users", "responses": {}},
                 "parameters": [],
                 "servers": [],
-                "summary": "User operations"
+                "summary": "User operations",
             }
         }
-        
+
         result = Normalizer._normalize_paths(paths, is_openapi3=True)
-        
+
         assert "get" in result["/users"]
         assert "parameters" not in result["/users"]
         assert "servers" not in result["/users"]
@@ -260,11 +290,11 @@ class TestNormalizeOperation:
             "description": "Retrieve a user by ID",
             "operationId": "getUser",
             "tags": ["users"],
-            "responses": {}
+            "responses": {},
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
-        
+
         assert result["summary"] == "Get user"
         assert result["description"] == "Retrieve a user by ID"
         assert result["operationId"] == "getUser"
@@ -279,14 +309,14 @@ class TestNormalizeOperation:
             "parameters": [
                 {"name": "limit", "in": "query", "schema": {"type": "integer"}}
             ],
-            "responses": {}
+            "responses": {},
         }
-        path_params = [
-            {"name": "userId", "in": "path", "schema": {"type": "string"}}
-        ]
-        
-        result = Normalizer._normalize_operation(operation, path_params, is_openapi3=True)
-        
+        path_params = [{"name": "userId", "in": "path", "schema": {"type": "string"}}]
+
+        result = Normalizer._normalize_operation(
+            operation, path_params, is_openapi3=True
+        )
+
         assert len(result["parameters"]) == 2
         assert result["parameters"][0]["name"] == "userId"
         assert result["parameters"][1]["name"] == "limit"
@@ -300,19 +330,22 @@ class TestNormalizeOperation:
                     "in": "body",
                     "name": "body",
                     "required": True,
-                    "schema": {"type": "object"}
+                    "schema": {"type": "object"},
                 }
             ],
             "consumes": ["application/json"],
-            "responses": {}
+            "responses": {},
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
-        
+
         assert "requestBody" in result
         assert result["requestBody"]["required"] == True
         assert "application/json" in result["requestBody"]["content"]
-        assert result["requestBody"]["content"]["application/json"]["schema"]["type"] == "object"
+        assert (
+            result["requestBody"]["content"]["application/json"]["schema"]["type"]
+            == "object"
+        )
         # Body parameter should not be in parameters list
         assert len(result["parameters"]) == 0
 
@@ -322,17 +355,13 @@ class TestNormalizeOperation:
             "summary": "Create user",
             "requestBody": {
                 "required": True,
-                "content": {
-                    "application/json": {
-                        "schema": {"type": "object"}
-                    }
-                }
+                "content": {"application/json": {"schema": {"type": "object"}}},
             },
-            "responses": {}
+            "responses": {},
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
-        
+
         assert "requestBody" in result
         assert result["requestBody"]["required"] == True
 
@@ -365,23 +394,19 @@ class TestNormalizeOperation:
         operation = {
             "summary": "Get user",
             "security": [{"api_key": []}],
-            "responses": {}
+            "responses": {},
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
-        
+
         assert result["security"] == [{"api_key": []}]
 
     def test_normalize_operation_deprecated(self):
         """Test normalizing deprecated operation."""
-        operation = {
-            "summary": "Old endpoint",
-            "deprecated": True,
-            "responses": {}
-        }
-        
+        operation = {"summary": "Old endpoint", "deprecated": True, "responses": {}}
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
-        
+
         assert result["deprecated"] == True
 
 
@@ -395,15 +420,11 @@ class TestNormalizeParameter:
             "in": "query",
             "description": "Max items to return",
             "required": False,
-            "schema": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 100
-            }
+            "schema": {"type": "integer", "minimum": 1, "maximum": 100},
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=True)
-        
+
         assert result["name"] == "limit"
         assert result["in"] == "query"
         assert result["description"] == "Max items to return"
@@ -432,11 +453,11 @@ class TestNormalizeParameter:
             "required": False,
             "type": "integer",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 100,
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["name"] == "limit"
         assert result["in"] == "query"
         assert result["schema"]["type"] == "integer"
@@ -450,11 +471,11 @@ class TestNormalizeParameter:
             "in": "query",
             "type": "array",
             "items": {"type": "string"},
-            "collectionFormat": "csv"
+            "collectionFormat": "csv",
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["schema"]["type"] == "array"
         assert result["schema"]["items"]["type"] == "string"
         assert result["schema"]["collectionFormat"] == "csv"
@@ -465,24 +486,19 @@ class TestNormalizeParameter:
             "name": "status",
             "in": "query",
             "type": "string",
-            "enum": ["active", "inactive"]
+            "enum": ["active", "inactive"],
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["schema"]["enum"] == ["active", "inactive"]
 
     def test_normalize_parameter_path_required(self):
         """Test normalizing path parameter."""
-        param = {
-            "name": "userId",
-            "in": "path",
-            "required": True,
-            "type": "string"
-        }
-        
+        param = {"name": "userId", "in": "path", "required": True, "type": "string"}
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["in"] == "path"
         assert result["required"] == True
 
@@ -495,17 +511,12 @@ class TestConvertBodyParamToRequestBody:
         body_param = {
             "description": "User object",
             "required": True,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"}
-                }
-            }
+            "schema": {"type": "object", "properties": {"name": {"type": "string"}}},
         }
         consumes = ["application/json"]
-        
+
         result = Normalizer._convert_body_param_to_request_body(body_param, consumes)
-        
+
         assert result["description"] == "User object"
         assert result["required"] == True
         assert "application/json" in result["content"]
@@ -513,27 +524,22 @@ class TestConvertBodyParamToRequestBody:
 
     def test_convert_body_param_multiple_media_types(self):
         """Test converting body parameter with multiple media types."""
-        body_param = {
-            "schema": {"type": "object"}
-        }
+        body_param = {"schema": {"type": "object"}}
         consumes = ["application/json", "application/xml"]
-        
+
         result = Normalizer._convert_body_param_to_request_body(body_param, consumes)
-        
+
         assert len(result["content"]) == 2
         assert "application/json" in result["content"]
         assert "application/xml" in result["content"]
 
     def test_convert_body_param_optional(self):
         """Test converting optional body parameter."""
-        body_param = {
-            "required": False,
-            "schema": {"type": "object"}
-        }
+        body_param = {"required": False, "schema": {"type": "object"}}
         consumes = ["application/json"]
-        
+
         result = Normalizer._convert_body_param_to_request_body(body_param, consumes)
-        
+
         assert result["required"] == False
 
 
@@ -545,16 +551,12 @@ class TestNormalizeResponses:
         responses = {
             "200": {
                 "description": "Success",
-                "content": {
-                    "application/json": {
-                        "schema": {"type": "object"}
-                    }
-                }
+                "content": {"application/json": {"schema": {"type": "object"}}},
             }
         }
-        
+
         result = Normalizer._normalize_responses(responses, [], is_openapi3=True)
-        
+
         assert "200" in result
         assert result["200"]["description"] == "Success"
         assert "application/json" in result["200"]["content"]
@@ -584,33 +586,25 @@ class TestNormalizeResponses:
 
     def test_normalize_swagger2_responses(self):
         """Test normalizing Swagger 2.0 responses (needs content wrapper)."""
-        responses = {
-            "200": {
-                "description": "Success",
-                "schema": {"type": "object"}
-            }
-        }
+        responses = {"200": {"description": "Success", "schema": {"type": "object"}}}
         produces = ["application/json"]
-        
+
         result = Normalizer._normalize_responses(responses, produces, is_openapi3=False)
-        
+
         assert "200" in result
         assert "content" in result["200"]
         assert "application/json" in result["200"]["content"]
-        assert result["200"]["content"]["application/json"]["schema"]["type"] == "object"
+        assert (
+            result["200"]["content"]["application/json"]["schema"]["type"] == "object"
+        )
 
     def test_normalize_responses_multiple_media_types(self):
         """Test normalizing responses with multiple media types."""
-        responses = {
-            "200": {
-                "description": "Success",
-                "schema": {"type": "object"}
-            }
-        }
+        responses = {"200": {"description": "Success", "schema": {"type": "object"}}}
         produces = ["application/json", "application/xml"]
-        
+
         result = Normalizer._normalize_responses(responses, produces, is_openapi3=False)
-        
+
         assert len(result["200"]["content"]) == 2
         assert "application/json" in result["200"]["content"]
         assert "application/xml" in result["200"]["content"]
@@ -621,14 +615,14 @@ class TestNormalizeResponses:
             "200": {
                 "description": "Success",
                 "schema": {"type": "object"},
-                "headers": {
-                    "X-Rate-Limit": {"type": "integer"}
-                }
+                "headers": {"X-Rate-Limit": {"type": "integer"}},
             }
         }
-        
-        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
-        
+
+        result = Normalizer._normalize_responses(
+            responses, ["application/json"], is_openapi3=False
+        )
+
         assert "headers" in result["200"]
         assert "X-Rate-Limit" in result["200"]["headers"]
 
@@ -637,11 +631,13 @@ class TestNormalizeResponses:
         responses = {
             "200": {"description": "Success", "schema": {"type": "object"}},
             "404": {"description": "Not found"},
-            "500": {"description": "Server error"}
+            "500": {"description": "Server error"},
         }
-        
-        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
-        
+
+        result = Normalizer._normalize_responses(
+            responses, ["application/json"], is_openapi3=False
+        )
+
         assert len(result) == 3
         assert "200" in result
         assert "404" in result
@@ -649,12 +645,12 @@ class TestNormalizeResponses:
 
     def test_normalize_response_no_schema(self):
         """Test normalizing response without schema."""
-        responses = {
-            "204": {"description": "No content"}
-        }
-        
-        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
-        
+        responses = {"204": {"description": "No content"}}
+
+        result = Normalizer._normalize_responses(
+            responses, ["application/json"], is_openapi3=False
+        )
+
         assert result["204"]["description"] == "No content"
         assert "content" not in result["204"]
 
@@ -665,15 +661,10 @@ class TestExtractParameters:
     def test_extract_no_parameters(self):
         """Test extracting from operation with no parameters."""
         operation = {"parameters": []}
-        
+
         result = Normalizer.extract_parameters(operation)
-        
-        assert result == {
-            "query": {},
-            "path": {},
-            "header": {},
-            "cookie": {}
-        }
+
+        assert result == {"query": {}, "path": {}, "header": {}, "cookie": {}}
 
     def test_extract_query_parameters(self):
         """Test extracting query parameters."""
@@ -684,19 +675,19 @@ class TestExtractParameters:
                     "in": "query",
                     "required": False,
                     "schema": {"type": "integer"},
-                    "description": "Max items"
+                    "description": "Max items",
                 },
                 {
                     "name": "offset",
                     "in": "query",
                     "required": False,
-                    "schema": {"type": "integer"}
-                }
+                    "schema": {"type": "integer"},
+                },
             ]
         }
-        
+
         result = Normalizer.extract_parameters(operation)
-        
+
         assert len(result["query"]) == 2
         assert "limit" in result["query"]
         assert "offset" in result["query"]
@@ -710,13 +701,13 @@ class TestExtractParameters:
                     "name": "userId",
                     "in": "path",
                     "required": True,
-                    "schema": {"type": "string"}
+                    "schema": {"type": "string"},
                 }
             ]
         }
-        
+
         result = Normalizer.extract_parameters(operation)
-        
+
         assert len(result["path"]) == 1
         assert "userId" in result["path"]
         assert result["path"]["userId"]["required"] == True
@@ -729,13 +720,13 @@ class TestExtractParameters:
                     "name": "X-API-Key",
                     "in": "header",
                     "required": True,
-                    "schema": {"type": "string"}
+                    "schema": {"type": "string"},
                 }
             ]
         }
-        
+
         result = Normalizer.extract_parameters(operation)
-        
+
         assert len(result["header"]) == 1
         assert "X-API-Key" in result["header"]
 
@@ -745,12 +736,12 @@ class TestExtractParameters:
             "parameters": [
                 {"name": "userId", "in": "path", "schema": {"type": "string"}},
                 {"name": "limit", "in": "query", "schema": {"type": "integer"}},
-                {"name": "X-API-Key", "in": "header", "schema": {"type": "string"}}
+                {"name": "X-API-Key", "in": "header", "schema": {"type": "string"}},
             ]
         }
-        
+
         result = Normalizer.extract_parameters(operation)
-        
+
         assert len(result["path"]) == 1
         assert len(result["query"]) == 1
         assert len(result["header"]) == 1
@@ -764,12 +755,12 @@ class TestExtractResponses:
         operation = {
             "responses": {
                 "200": {"description": "Success"},
-                "404": {"description": "Not found"}
+                "404": {"description": "Not found"},
             }
         }
-        
+
         result = Normalizer.extract_responses(operation)
-        
+
         assert len(result) == 2
         assert "200" in result
         assert "404" in result
@@ -777,9 +768,9 @@ class TestExtractResponses:
     def test_extract_no_responses(self):
         """Test extracting from operation with no responses."""
         operation = {}
-        
+
         result = Normalizer.extract_responses(operation)
-        
+
         assert result == {}
 
 
@@ -791,16 +782,12 @@ class TestExtractRequestBody:
         operation = {
             "requestBody": {
                 "required": True,
-                "content": {
-                    "application/json": {
-                        "schema": {"type": "object"}
-                    }
-                }
+                "content": {"application/json": {"schema": {"type": "object"}}},
             }
         }
-        
+
         result = Normalizer.extract_request_body(operation)
-        
+
         assert result is not None
         assert result["required"] == True
         assert "application/json" in result["content"]
@@ -808,9 +795,9 @@ class TestExtractRequestBody:
     def test_extract_no_request_body(self):
         """Test extracting from operation with no request body."""
         operation = {}
-        
+
         result = Normalizer.extract_request_body(operation)
-        
+
         assert result is None
 
 
@@ -828,7 +815,12 @@ class TestIntegration:
             "paths": {
                 "/users/{userId}": {
                     "parameters": [
-                        {"name": "userId", "in": "path", "type": "string", "required": True}
+                        {
+                            "name": "userId",
+                            "in": "path",
+                            "type": "string",
+                            "required": True,
+                        }
                     ],
                     "get": {
                         "summary": "Get user",
@@ -836,9 +828,9 @@ class TestIntegration:
                         "responses": {
                             "200": {
                                 "description": "Success",
-                                "schema": {"type": "object"}
+                                "schema": {"type": "object"},
                             }
-                        }
+                        },
                     },
                     "put": {
                         "summary": "Update user",
@@ -848,39 +840,35 @@ class TestIntegration:
                                 "in": "body",
                                 "name": "body",
                                 "required": True,
-                                "schema": {"type": "object"}
+                                "schema": {"type": "object"},
                             }
                         ],
-                        "responses": {
-                            "200": {"description": "Updated"}
-                        }
-                    }
+                        "responses": {"200": {"description": "Updated"}},
+                    },
                 }
             },
-            "definitions": {
-                "User": {"type": "object"}
-            },
+            "definitions": {"User": {"type": "object"}},
             "securityDefinitions": {
                 "api_key": {"type": "apiKey", "in": "header", "name": "X-API-Key"}
-            }
+            },
         }
-        
+
         result = Normalizer.normalize(spec)
-        
+
         # Check version and info
         assert result["version"] == "2.0"
         assert result["info"]["title"] == "Test API"
-        
+
         # Check servers conversion
         assert result["servers"] == [{"url": "https://api.example.com/v1"}]
-        
+
         # Check components conversion
         assert "User" in result["components"]["schemas"]
         assert "api_key" in result["components"]["securitySchemes"]
-        
+
         # Check path normalization
         assert "/users/{userId}" in result["paths"]
-        
+
         # Check GET operation
         get_op = result["paths"]["/users/{userId}"]["get"]
         assert get_op["summary"] == "Get user"
@@ -889,7 +877,7 @@ class TestIntegration:
         assert get_op["parameters"][0]["schema"]["type"] == "string"
         assert "200" in get_op["responses"]
         assert "application/json" in get_op["responses"]["200"]["content"]
-        
+
         # Check PUT operation
         put_op = result["paths"]["/users/{userId}"]["put"]
         assert put_op["summary"] == "Update user"
@@ -910,7 +898,7 @@ class TestIntegration:
                             "name": "userId",
                             "in": "path",
                             "required": True,
-                            "schema": {"type": "string"}
+                            "schema": {"type": "string"},
                         }
                     ],
                     "get": {
@@ -919,34 +907,28 @@ class TestIntegration:
                             "200": {
                                 "description": "Success",
                                 "content": {
-                                    "application/json": {
-                                        "schema": {"type": "object"}
-                                    }
-                                }
+                                    "application/json": {"schema": {"type": "object"}}
+                                },
                             }
-                        }
-                    }
+                        },
+                    },
                 }
             },
-            "components": {
-                "schemas": {
-                    "User": {"type": "object"}
-                }
-            }
+            "components": {"schemas": {"User": {"type": "object"}}},
         }
-        
+
         result = Normalizer.normalize(spec)
-        
+
         # Check version and info
         assert result["version"] == "3.0.0"
         assert result["info"]["title"] == "Test API"
-        
+
         # Check servers preserved
         assert result["servers"] == [{"url": "https://api.example.com/v1"}]
-        
+
         # Check components preserved
         assert "User" in result["components"]["schemas"]
-        
+
         # Check path normalization
         get_op = result["paths"]["/users/{userId}"]["get"]
         assert get_op["summary"] == "Get user"
@@ -963,9 +945,9 @@ class TestEdgeCases:
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
         }
-        
+
         result = Normalizer.normalize(spec)
-        
+
         assert result["paths"] == {}
         assert result["servers"] == []
 
@@ -974,11 +956,11 @@ class TestEdgeCases:
         spec = {
             "swagger": "2.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {}
+            "paths": {},
         }
-        
+
         result = Normalizer.normalize(spec)
-        
+
         assert result["components"]["schemas"] == {}
         assert result["components"]["securitySchemes"] == {}
 
@@ -990,24 +972,22 @@ class TestEdgeCases:
                     "name": "session_id",
                     "in": "cookie",
                     "required": True,
-                    "schema": {"type": "string"}
+                    "schema": {"type": "string"},
                 }
             ]
         }
-        
+
         result = Normalizer.extract_parameters(operation)
-        
+
         assert len(result["cookie"]) == 1
         assert "session_id" in result["cookie"]
 
     def test_normalize_operation_without_optional_fields(self):
         """Test normalizing operation with minimal fields."""
-        operation = {
-            "responses": {"200": {"description": "OK"}}
-        }
-        
+        operation = {"responses": {"200": {"description": "OK"}}}
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=True)
-        
+
         assert result["summary"] == ""
         assert result["description"] == ""
         assert result["operationId"] == ""
@@ -1025,11 +1005,11 @@ class TestEdgeCases:
             "minimum": 0,
             "maximum": 120,
             "default": 18,
-            "format": "int32"
+            "format": "int32",
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["schema"]["type"] == "integer"
         assert result["schema"]["minimum"] == 0
         assert result["schema"]["maximum"] == 120
@@ -1044,11 +1024,11 @@ class TestEdgeCases:
             "type": "string",
             "pattern": "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$",
             "minLength": 5,
-            "maxLength": 100
+            "maxLength": 100,
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["schema"]["pattern"] == "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$"
         assert result["schema"]["minLength"] == 5
         assert result["schema"]["maxLength"] == 100
@@ -1061,11 +1041,11 @@ class TestEdgeCases:
             "type": "array",
             "items": {"type": "integer"},
             "minItems": 1,
-            "maxItems": 10
+            "maxItems": 10,
         }
-        
+
         result = Normalizer._normalize_parameter(param, is_openapi3=False)
-        
+
         assert result["schema"]["type"] == "array"
         assert result["schema"]["minItems"] == 1
         assert result["schema"]["maxItems"] == 10
@@ -1073,11 +1053,9 @@ class TestEdgeCases:
     def test_convert_servers_with_multiple_schemes(self):
         """Test server conversion preserves order."""
         result = Normalizer._convert_to_servers(
-            "api.example.com",
-            "/v2",
-            ["https", "http", "ws"]
+            "api.example.com", "/v2", ["https", "http", "ws"]
         )
-        
+
         assert len(result) == 3
         assert result[0]["url"] == "https://api.example.com/v2"
         assert result[1]["url"] == "http://api.example.com/v2"
@@ -1092,18 +1070,18 @@ class TestEdgeCases:
                         "name": "itemId",
                         "in": "path",
                         "required": True,
-                        "schema": {"type": "string"}
+                        "schema": {"type": "string"},
                     }
                 ],
                 "get": {
                     "summary": "Get item",
-                    "responses": {"200": {"description": "Success"}}
-                }
+                    "responses": {"200": {"description": "Success"}},
+                },
             }
         }
-        
+
         result = Normalizer._normalize_paths(paths, is_openapi3=True)
-        
+
         # Path parameters should be merged into operation
         assert len(result["/items/{itemId}"]["get"]["parameters"]) == 1
         assert result["/items/{itemId}"]["get"]["parameters"][0]["name"] == "itemId"
@@ -1112,18 +1090,18 @@ class TestEdgeCases:
         """Test Swagger 2.0 body parameter with multiple content types."""
         operation = {
             "parameters": [
-                {
-                    "in": "body",
-                    "name": "body",
-                    "schema": {"type": "object"}
-                }
+                {"in": "body", "name": "body", "schema": {"type": "object"}}
             ],
-            "consumes": ["application/json", "application/xml", "application/x-www-form-urlencoded"],
-            "responses": {}
+            "consumes": [
+                "application/json",
+                "application/xml",
+                "application/x-www-form-urlencoded",
+            ],
+            "responses": {},
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
-        
+
         assert len(result["requestBody"]["content"]) == 3
         assert "application/json" in result["requestBody"]["content"]
         assert "application/xml" in result["requestBody"]["content"]
@@ -1133,11 +1111,13 @@ class TestEdgeCases:
         """Test response without schema (like 204 No Content)."""
         responses = {
             "204": {"description": "No Content"},
-            "304": {"description": "Not Modified"}
+            "304": {"description": "Not Modified"},
         }
-        
-        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
-        
+
+        result = Normalizer._normalize_responses(
+            responses, ["application/json"], is_openapi3=False
+        )
+
         assert "204" in result
         assert "304" in result
         assert "content" not in result["204"]
@@ -1148,14 +1128,14 @@ class TestEdgeCases:
         operation = {
             "parameters": [
                 {"name": "force", "in": "query", "type": "boolean"},
-                {"in": "body", "name": "body", "schema": {"type": "object"}}
+                {"in": "body", "name": "body", "schema": {"type": "object"}},
             ],
             "consumes": ["application/json"],
-            "responses": {}
+            "responses": {},
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
-        
+
         # Query parameter should be in parameters
         assert len(result["parameters"]) == 1
         assert result["parameters"][0]["name"] == "force"
@@ -1164,18 +1144,18 @@ class TestEdgeCases:
 
     def test_path_and_operation_params_no_duplicates(self):
         """Test that path and operation parameters don't create duplicates."""
-        path_params = [
-            {"name": "userId", "in": "path", "schema": {"type": "string"}}
-        ]
+        path_params = [{"name": "userId", "in": "path", "schema": {"type": "string"}}]
         operation = {
             "parameters": [
                 {"name": "include", "in": "query", "schema": {"type": "string"}}
             ],
-            "responses": {}
+            "responses": {},
         }
-        
-        result = Normalizer._normalize_operation(operation, path_params, is_openapi3=True)
-        
+
+        result = Normalizer._normalize_operation(
+            operation, path_params, is_openapi3=True
+        )
+
         assert len(result["parameters"]) == 2
         # Path params come first
         assert result["parameters"][0]["name"] == "userId"
@@ -1189,11 +1169,11 @@ class TestEdgeCases:
             ],
             "responses": {
                 "200": {"description": "Success", "schema": {"type": "object"}}
-            }
+            },
         }
-        
+
         result = Normalizer._normalize_operation(operation, [], is_openapi3=False)
-        
+
         # Should default to application/json
         assert "application/json" in result["requestBody"]["content"]
         assert "application/json" in result["responses"]["200"]["content"]
@@ -1201,9 +1181,9 @@ class TestEdgeCases:
     def test_extract_parameters_with_empty_operation(self):
         """Test extracting parameters from operation without parameters key."""
         operation = {"responses": {}}
-        
+
         result = Normalizer.extract_parameters(operation)
-        
+
         assert result["query"] == {}
         assert result["path"] == {}
         assert result["header"] == {}
@@ -1217,13 +1197,15 @@ class TestEdgeCases:
                 "schema": {"type": "array"},
                 "headers": {
                     "X-Total-Count": {"type": "integer"},
-                    "X-Page-Number": {"type": "integer"}
-                }
+                    "X-Page-Number": {"type": "integer"},
+                },
             }
         }
-        
-        result = Normalizer._normalize_responses(responses, ["application/json"], is_openapi3=False)
-        
+
+        result = Normalizer._normalize_responses(
+            responses, ["application/json"], is_openapi3=False
+        )
+
         assert "content" in result["200"]
         assert "headers" in result["200"]
         assert len(result["200"]["headers"]) == 2

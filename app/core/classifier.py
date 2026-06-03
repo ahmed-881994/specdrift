@@ -654,6 +654,37 @@ class Classifier:
         )
 
     @staticmethod
+    def classify_metadata_change(
+        path: str,
+        field_name: str,
+        rule_type: str = "metadata_changed",
+        method: str = "",
+        category: str = "metadata",
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify OpenAPI metadata changes that can affect clients or tooling."""
+        change_details = Classifier._merge_details(
+            {
+                "keyword": field_name,
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category=category,
+            path=path,
+            method=Classifier._method(method),
+            field_name=field_name,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
     def classify_parameter_serialization_change(
         path: str,
         method: str,

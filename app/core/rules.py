@@ -26,6 +26,8 @@ BREAKING_RULES = {
     "request_media_type_removed": "Request media type removed",
     "response_media_type_removed": "Response media type removed",
     "parameter_serialization_changed": "Parameter serialization changed",
+    "security_requirement_added": "Security requirement added",
+    "callback_removed": "Callback removed",
     "success_response_removed": "Success response (2xx) removed",
 }
 
@@ -40,6 +42,12 @@ POTENTIALLY_BREAKING_RULES = {
     "component_changed": "Reusable component changed",
     "response_header_removed": "Response header removed",
     "response_header_changed": "Response header changed",
+    "operation_id_changed": "Operation ID changed",
+    "operation_deprecated": "Operation deprecated",
+    "security_requirement_changed": "Security requirement changed",
+    "server_removed": "Server removed",
+    "server_changed": "Server changed",
+    "callback_changed": "Callback changed",
     "parameter_made_optional": "Parameter made optional",
     "field_made_optional": "Field made optional",
     "request_body_made_optional": "Request body made optional",
@@ -60,6 +68,10 @@ NON_BREAKING_RULES = {
     "request_media_type_added": "Request media type added",
     "response_media_type_added": "Response media type added",
     "response_header_added": "Response header added",
+    "security_requirement_removed": "Security requirement removed",
+    "server_added": "Server added",
+    "callback_added": "Callback added",
+    "operation_undeprecated": "Operation undeprecated",
     "metadata_changed": "Metadata-only changes",
 }
 

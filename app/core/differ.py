@@ -67,6 +67,29 @@ class Differ:
         "maxProperties",
         "maxContains",
     }
+    ROOT_METADATA_FIELDS = (
+        ("servers", "server"),
+        ("security", "security"),
+        ("tags", "metadata"),
+        ("externalDocs", "metadata"),
+        ("info.contact", "metadata"),
+        ("info.license", "metadata"),
+    )
+    PATH_METADATA_FIELDS = (
+        ("summary", "metadata"),
+        ("description", "metadata"),
+        ("servers", "server"),
+    )
+    OPERATION_METADATA_FIELDS = (
+        ("summary", "metadata"),
+        ("description", "metadata"),
+        ("operationId", "metadata"),
+        ("tags", "metadata"),
+        ("deprecated", "metadata"),
+        ("security", "security"),
+        ("servers", "server"),
+        ("externalDocs", "metadata"),
+    )
 
     def __init__(self):
         self.changes: List[Change] = []
@@ -102,6 +125,7 @@ class Differ:
         new_normalized = Normalizer.normalize(new_spec)
 
         self._diff_json_schema_dialect(old_normalized, new_normalized)
+        self._diff_root_metadata(old_normalized, new_normalized)
 
         old_components = old_normalized.get("components", {})
         new_components = new_normalized.get("components", {})
@@ -109,12 +133,19 @@ class Differ:
         # Extract paths
         old_paths = old_normalized.get("paths", {})
         new_paths = new_normalized.get("paths", {})
+        old_path_metadata = old_normalized.get("path_metadata", {})
+        new_path_metadata = new_normalized.get("path_metadata", {})
 
         # Detect reusable component-level changes
         self._diff_components(old_components, new_components, component_ref_index)
 
         # Detect endpoint-level changes
         self._diff_endpoints(old_paths, new_paths)
+
+        # Detect path-item metadata changes
+        self._diff_path_metadata(
+            old_path_metadata, new_path_metadata, old_paths, new_paths
+        )
 
         # Detect method and operation-level changes
         self._diff_operations(old_paths, new_paths)
@@ -155,6 +186,224 @@ class Differ:
                 },
             )
         )
+
+    def _diff_root_metadata(
+        self, old_spec: Dict[str, Any], new_spec: Dict[str, Any]
+    ) -> None:
+        """Detect root OpenAPI metadata changes."""
+        for field_name, category in self.ROOT_METADATA_FIELDS:
+            old_value = self._metadata_value(old_spec, field_name)
+            new_value = self._metadata_value(new_spec, field_name)
+            if old_value == new_value:
+                continue
+
+            rule_type = self._metadata_rule(field_name, category, old_value, new_value)
+            self.changes.append(
+                Classifier.classify_metadata_change(
+                    "#",
+                    field_name,
+                    rule_type,
+                    category=category,
+                    old_value=old_value,
+                    new_value=new_value,
+                    details={
+                        "schema_path": self._root_metadata_pointer(field_name),
+                        "metadata_scope": "root",
+                    },
+                )
+            )
+
+    def _diff_path_metadata(
+        self,
+        old_metadata: Dict[str, Any],
+        new_metadata: Dict[str, Any],
+        old_paths: Dict[str, Any],
+        new_paths: Dict[str, Any],
+    ) -> None:
+        """Detect path-item metadata changes for paths that still exist."""
+        for path in old_paths:
+            if path not in new_paths:
+                continue
+
+            old_path_metadata = old_metadata.get(path, {})
+            new_path_metadata = new_metadata.get(path, {})
+            for field_name, category in self.PATH_METADATA_FIELDS:
+                old_value = old_path_metadata.get(field_name)
+                new_value = new_path_metadata.get(field_name)
+                if old_value == new_value:
+                    continue
+
+                rule_type = self._metadata_rule(
+                    field_name, category, old_value, new_value
+                )
+                self.changes.append(
+                    Classifier.classify_metadata_change(
+                        path,
+                        field_name,
+                        rule_type,
+                        category=category,
+                        old_value=old_value,
+                        new_value=new_value,
+                        details={
+                            "schema_path": self._path_metadata_pointer(
+                                path, field_name
+                            ),
+                            "metadata_scope": "path",
+                        },
+                    )
+                )
+
+    def _diff_operation_metadata(
+        self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
+    ) -> None:
+        """Detect operation metadata changes."""
+        for field_name, category in self.OPERATION_METADATA_FIELDS:
+            old_value = old_op.get(field_name)
+            new_value = new_op.get(field_name)
+            if old_value == new_value:
+                continue
+
+            rule_type = self._metadata_rule(field_name, category, old_value, new_value)
+            self.changes.append(
+                Classifier.classify_metadata_change(
+                    path,
+                    field_name,
+                    rule_type,
+                    method=method,
+                    category=category,
+                    old_value=old_value,
+                    new_value=new_value,
+                    details={
+                        "schema_path": self._operation_metadata_pointer(
+                            path, method, field_name
+                        ),
+                        "metadata_scope": "operation",
+                    },
+                )
+            )
+
+        self._diff_operation_callbacks(path, method, old_op, new_op)
+
+    def _diff_operation_callbacks(
+        self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
+    ) -> None:
+        """Detect operation callback additions, removals, and object changes."""
+        old_callbacks = old_op.get("callbacks", {})
+        new_callbacks = new_op.get("callbacks", {})
+        if not isinstance(old_callbacks, dict) or not isinstance(new_callbacks, dict):
+            return
+
+        for callback_name in old_callbacks:
+            if callback_name not in new_callbacks:
+                self._append_callback_change(
+                    path,
+                    method,
+                    callback_name,
+                    "callback_removed",
+                    old_value=old_callbacks[callback_name],
+                )
+
+        for callback_name in new_callbacks:
+            if callback_name not in old_callbacks:
+                self._append_callback_change(
+                    path,
+                    method,
+                    callback_name,
+                    "callback_added",
+                    new_value=new_callbacks[callback_name],
+                )
+
+        for callback_name in old_callbacks:
+            if (
+                callback_name in new_callbacks
+                and old_callbacks[callback_name] != new_callbacks[callback_name]
+            ):
+                self._append_callback_change(
+                    path,
+                    method,
+                    callback_name,
+                    "callback_changed",
+                    old_value=old_callbacks[callback_name],
+                    new_value=new_callbacks[callback_name],
+                )
+
+    def _append_callback_change(
+        self,
+        path: str,
+        method: str,
+        callback_name: str,
+        rule_type: str,
+        old_value: Any = None,
+        new_value: Any = None,
+    ) -> None:
+        """Append a callback metadata change."""
+        self.changes.append(
+            Classifier.classify_metadata_change(
+                path,
+                callback_name,
+                rule_type,
+                method=method,
+                category="callback",
+                old_value=old_value,
+                new_value=new_value,
+                details={
+                    "schema_path": (
+                        f"{self._operation_pointer(path, method)}/callbacks/"
+                        f"{self._json_pointer_escape(callback_name)}"
+                    ),
+                    "metadata_scope": "operation",
+                },
+            )
+        )
+
+    @staticmethod
+    def _metadata_value(spec: Dict[str, Any], field_name: str) -> Any:
+        """Return a dotted metadata field value."""
+        value: Any = spec
+        for part in field_name.split("."):
+            if not isinstance(value, dict):
+                return None
+            value = value.get(part)
+        return value
+
+    def _metadata_rule(
+        self, field_name: str, category: str, old_value: Any, new_value: Any
+    ) -> str:
+        """Select a conservative rule for metadata changes."""
+        if category == "security":
+            if self._is_empty_metadata(old_value) and not self._is_empty_metadata(
+                new_value
+            ):
+                return "security_requirement_added"
+            if not self._is_empty_metadata(old_value) and self._is_empty_metadata(
+                new_value
+            ):
+                return "security_requirement_removed"
+            return "security_requirement_changed"
+
+        if category == "server":
+            if self._is_empty_metadata(old_value) and not self._is_empty_metadata(
+                new_value
+            ):
+                return "server_added"
+            if not self._is_empty_metadata(old_value) and self._is_empty_metadata(
+                new_value
+            ):
+                return "server_removed"
+            return "server_changed"
+
+        if field_name == "operationId":
+            return "operation_id_changed"
+
+        if field_name == "deprecated":
+            return "operation_deprecated" if new_value else "operation_undeprecated"
+
+        return "metadata_changed"
+
+    @staticmethod
+    def _is_empty_metadata(value: Any) -> bool:
+        """Return whether a metadata value is absent or empty."""
+        return value in (None, "", [], {})
 
     @staticmethod
     def _extract_version(spec: Dict[str, Any]) -> Optional[str]:
@@ -230,9 +479,7 @@ class Differ:
                 continue
 
             if component_type == "schemas":
-                self._diff_component_schemas(
-                    old_items, new_items, component_ref_index
-                )
+                self._diff_component_schemas(old_items, new_items, component_ref_index)
             else:
                 self._diff_component_map(
                     component_type, old_items, new_items, component_ref_index
@@ -368,7 +615,9 @@ class Differ:
         component_ref_index: Dict[str, List[str]],
     ) -> Dict[str, Any]:
         """Return common details for reusable component changes."""
-        ref = f"#/components/{component_type}/{self._json_pointer_escape(component_name)}"
+        ref = (
+            f"#/components/{component_type}/{self._json_pointer_escape(component_name)}"
+        )
         details: Dict[str, Any] = {"ref": ref}
         impacted_operations = component_ref_index.get(ref)
         if impacted_operations:
@@ -505,6 +754,9 @@ class Differ:
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
     ) -> None:
         """Detect changes within a single operation."""
+        # Diff operation metadata
+        self._diff_operation_metadata(path, method, old_op, new_op)
+
         # Diff parameters
         self._diff_parameters(path, method, old_op, new_op)
 
@@ -1932,6 +2184,24 @@ class Differ:
     def _operation_pointer(cls, path: str, method: str) -> str:
         """Return a stable pointer for an OpenAPI operation."""
         return f"{cls._path_item_pointer(path)}/{method.lower()}"
+
+    @classmethod
+    def _root_metadata_pointer(cls, field_name: str) -> str:
+        """Return a stable pointer for root metadata."""
+        parts = field_name.split(".")
+        return "#/" + "/".join(cls._json_pointer_escape(part) for part in parts)
+
+    @classmethod
+    def _path_metadata_pointer(cls, path: str, field_name: str) -> str:
+        """Return a stable pointer for path-item metadata."""
+        return f"{cls._path_item_pointer(path)}/{cls._json_pointer_escape(field_name)}"
+
+    @classmethod
+    def _operation_metadata_pointer(
+        cls, path: str, method: str, field_name: str
+    ) -> str:
+        """Return a stable pointer for operation metadata."""
+        return f"{cls._operation_pointer(path, method)}/{cls._json_pointer_escape(field_name)}"
 
     @classmethod
     def _parameter_pointer(

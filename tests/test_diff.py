@@ -1863,9 +1863,7 @@ class TestDiffer:
 
         result = Differ().diff(old_spec, new_spec)
 
-        media_changes = [
-            c for c in result.changes if c.category == "media_type"
-        ]
+        media_changes = [c for c in result.changes if c.category == "media_type"]
         assert len(media_changes) == 1
         assert media_changes[0].type == "breaking"
         assert media_changes[0].field_name == "multipart/form-data"
@@ -1883,9 +1881,7 @@ class TestDiffer:
                             "200": {
                                 "description": "OK",
                                 "content": {
-                                    "application/json": {
-                                        "schema": {"type": "object"}
-                                    }
+                                    "application/json": {"schema": {"type": "object"}}
                                 },
                             }
                         }
@@ -1903,12 +1899,8 @@ class TestDiffer:
                             "200": {
                                 "description": "OK",
                                 "content": {
-                                    "application/json": {
-                                        "schema": {"type": "object"}
-                                    },
-                                    "application/xml": {
-                                        "schema": {"type": "object"}
-                                    },
+                                    "application/json": {"schema": {"type": "object"}},
+                                    "application/xml": {"schema": {"type": "object"}},
                                 },
                             }
                         }
@@ -1919,9 +1911,7 @@ class TestDiffer:
 
         result = Differ().diff(old_spec, new_spec)
 
-        media_changes = [
-            c for c in result.changes if c.category == "media_type"
-        ]
+        media_changes = [c for c in result.changes if c.category == "media_type"]
         assert len(media_changes) == 1
         assert media_changes[0].type == "non_breaking"
         assert media_changes[0].field_name == "application/xml"
@@ -1942,9 +1932,7 @@ class TestDiffer:
                                     "application/json": {
                                         "schema": {
                                             "type": "object",
-                                            "properties": {
-                                                "id": {"type": "string"}
-                                            },
+                                            "properties": {"id": {"type": "string"}},
                                         }
                                     },
                                     "application/xml": {
@@ -1975,9 +1963,7 @@ class TestDiffer:
                                     "application/json": {
                                         "schema": {
                                             "type": "object",
-                                            "properties": {
-                                                "id": {"type": "string"}
-                                            },
+                                            "properties": {"id": {"type": "string"}},
                                         }
                                     },
                                     "application/xml": {
@@ -2004,8 +1990,10 @@ class TestDiffer:
             if c.category == "schema" and c.field_name == "legacyId"
         ]
         assert len(schema_changes) == 1
-        assert schema_changes[0].details["schema_path"].endswith(
-            "/content/application~1xml/schema/properties/legacyId/type"
+        assert (
+            schema_changes[0]
+            .details["schema_path"]
+            .endswith("/content/application~1xml/schema/properties/legacyId/type")
         )
 
     def test_detect_response_header_add_remove_and_schema_change(self):
@@ -2020,12 +2008,8 @@ class TestDiffer:
                             "200": {
                                 "description": "OK",
                                 "headers": {
-                                    "X-Rate-Limit": {
-                                        "schema": {"type": "integer"}
-                                    },
-                                    "X-Deprecated": {
-                                        "schema": {"type": "string"}
-                                    },
+                                    "X-Rate-Limit": {"schema": {"type": "integer"}},
+                                    "X-Deprecated": {"schema": {"type": "string"}},
                                 },
                             }
                         }
@@ -2043,12 +2027,8 @@ class TestDiffer:
                             "200": {
                                 "description": "OK",
                                 "headers": {
-                                    "X-Rate-Limit": {
-                                        "schema": {"type": "string"}
-                                    },
-                                    "X-Trace-Id": {
-                                        "schema": {"type": "string"}
-                                    },
+                                    "X-Rate-Limit": {"schema": {"type": "string"}},
+                                    "X-Trace-Id": {"schema": {"type": "string"}},
                                 },
                             }
                         }
@@ -2060,15 +2040,18 @@ class TestDiffer:
         result = Differ().diff(old_spec, new_spec)
 
         removed_header = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "header" and c.field_name == "X-Deprecated"
         ]
         added_header = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "header" and c.field_name == "X-Trace-Id"
         ]
         changed_header_schema = [
-            c for c in result.changes
+            c
+            for c in result.changes
             if c.category == "schema" and c.field_name == "X-Rate-Limit"
         ]
         assert len(removed_header) == 1
@@ -2130,8 +2113,7 @@ class TestDiffer:
         result = Differ().diff(old_spec, new_spec)
 
         serialization_changes = [
-            c for c in result.changes
-            if c.category == "parameter_serialization"
+            c for c in result.changes if c.category == "parameter_serialization"
         ]
         assert len(serialization_changes) == 2
         assert {c.details["keyword"] for c in serialization_changes} == {
@@ -2161,8 +2143,14 @@ class TestDiffer:
         assert change.category == "metadata"
         assert change.type == "potentially_breaking"
         assert change.details["schema_path"] == "#/jsonSchemaDialect"
-        assert change.details["old_value"] == "https://json-schema.org/draft/2020-12/schema"
-        assert change.details["new_value"] == "https://spec.openapis.org/oas/3.1/dialect/base"
+        assert (
+            change.details["old_value"]
+            == "https://json-schema.org/draft/2020-12/schema"
+        )
+        assert (
+            change.details["new_value"]
+            == "https://spec.openapis.org/oas/3.1/dialect/base"
+        )
 
     def test_detect_openapi_31_schema_keyword_change(self):
         """Test detection of 3.1 JSON Schema keyword changes."""
@@ -2360,8 +2348,7 @@ class TestDiffer:
         change = next(
             c
             for c in result.changes
-            if c.category == "schema_constraint"
-            and c.details["keyword"] == "examples"
+            if c.category == "schema_constraint" and c.details["keyword"] == "examples"
         )
         assert change.type == "potentially_breaking"
         assert change.field_name == "name"
@@ -2442,9 +2429,7 @@ class TestDiffer:
                                 "description": "OK",
                                 "content": {
                                     "application/json": {
-                                        "schema": {
-                                            "$ref": "#/components/schemas/User"
-                                        }
+                                        "schema": {"$ref": "#/components/schemas/User"}
                                     }
                                 },
                             }
@@ -2486,9 +2471,7 @@ class TestDiffer:
         old_spec = {
             "openapi": "3.0.0",
             "info": {"title": "API", "version": "1.0.0"},
-            "paths": {
-                "/users": {"get": {"responses": {"200": {"description": "OK"}}}}
-            },
+            "paths": {"/users": {"get": {"responses": {"200": {"description": "OK"}}}}},
             "components": {
                 "schemas": {
                     "User": {
@@ -2594,9 +2577,7 @@ class TestDiffer:
                         "schema": {"type": "integer"},
                     },
                 },
-                "securitySchemes": {
-                    "ApiKeyAuth": {"type": "http", "scheme": "bearer"}
-                },
+                "securitySchemes": {"ApiKeyAuth": {"type": "http", "scheme": "bearer"}},
             },
         }
 
@@ -2673,6 +2654,165 @@ class TestDiffer:
         assert change.type == "breaking"
         assert change.details["component_type"] == "requestBodies"
         assert change.details["impacted_operations"] == ["POST /users"]
+
+    def test_detect_root_security_requirement_added(self):
+        """Test root security additions are classified as breaking."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {},
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "security": [{"ApiKeyAuth": []}],
+            "paths": {},
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "security")
+        assert change.category == "security"
+        assert change.type == "breaking"
+        assert change.message == "Security requirement added"
+        assert change.details["schema_path"] == "#/security"
+        assert change.details["metadata_scope"] == "root"
+
+    def test_detect_root_server_removed(self):
+        """Test root server removals are potentially breaking."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "servers": [{"url": "https://api.example.com/v1"}],
+            "paths": {},
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {},
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "servers")
+        assert change.category == "server"
+        assert change.type == "potentially_breaking"
+        assert change.message == "Server removed"
+        assert change.details["schema_path"] == "#/servers"
+
+    def test_detect_path_server_changed(self):
+        """Test path-level server changes are reported with path scope."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "servers": [{"url": "https://api.example.com/v1"}],
+                    "get": {"responses": {"200": {"description": "OK"}}},
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "servers": [{"url": "https://edge.example.com/v1"}],
+                    "get": {"responses": {"200": {"description": "OK"}}},
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "servers")
+        assert change.category == "server"
+        assert change.type == "potentially_breaking"
+        assert change.details["schema_path"] == "#/paths/~1users/servers"
+        assert change.details["metadata_scope"] == "path"
+
+    def test_detect_operation_metadata_changes(self):
+        """Test operation IDs and deprecation changes are reported."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "operationId": "listUsers",
+                        "deprecated": False,
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/users": {
+                    "get": {
+                        "operationId": "searchUsers",
+                        "deprecated": True,
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        operation_id = next(c for c in result.changes if c.field_name == "operationId")
+        deprecated = next(c for c in result.changes if c.field_name == "deprecated")
+        assert operation_id.category == "metadata"
+        assert operation_id.type == "potentially_breaking"
+        assert operation_id.message == "Operation ID changed"
+        assert operation_id.details["schema_path"] == "#/paths/~1users/get/operationId"
+        assert deprecated.type == "potentially_breaking"
+        assert deprecated.message == "Operation deprecated"
+
+    def test_detect_operation_callback_removed(self):
+        """Test operation callback removals are classified as breaking."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/subscriptions": {
+                    "post": {
+                        "callbacks": {
+                            "onEvent": {
+                                "{$request.body#/callbackUrl}": {
+                                    "post": {
+                                        "responses": {"200": {"description": "OK"}}
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"202": {"description": "Accepted"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/subscriptions": {
+                    "post": {"responses": {"202": {"description": "Accepted"}}}
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.field_name == "onEvent")
+        assert change.category == "callback"
+        assert change.type == "breaking"
+        assert change.message == "Callback removed"
+        assert (
+            change.details["schema_path"]
+            == "#/paths/~1subscriptions/post/callbacks/onEvent"
+        )
 
 
 if __name__ == "__main__":

@@ -41,10 +41,20 @@ class Normalizer:
             "version": spec.get("openapi", "3.0.0"),
             "info": spec.get("info", {}),
             "servers": spec.get("servers", []),
+            "security": spec.get("security", []),
+            "tags": spec.get("tags", []),
+            "externalDocs": spec.get("externalDocs"),
             "jsonSchemaDialect": spec.get("jsonSchemaDialect"),
-            "paths": Normalizer._normalize_paths(spec.get("paths", {}), is_openapi3=True),
+            "paths": Normalizer._normalize_paths(
+                spec.get("paths", {}), is_openapi3=True
+            ),
+            "path_metadata": Normalizer._normalize_path_metadata(
+                spec.get("paths", {}), is_openapi3=True
+            ),
             "components": Normalizer._normalize_components(spec.get("components", {})),
-            "webhooks": Normalizer._normalize_paths(spec.get("webhooks", {}), is_openapi3=True),
+            "webhooks": Normalizer._normalize_paths(
+                spec.get("webhooks", {}), is_openapi3=True
+            ),
         }
         return normalized
 
@@ -55,27 +65,61 @@ class Normalizer:
         servers = Normalizer._convert_to_servers(
             spec.get("host", ""),
             spec.get("basePath", ""),
-            spec.get("schemes", ["https"])
+            spec.get("schemes", ["https"]),
         )
-        
+
         # Convert definitions and securityDefinitions to components
         components = {
             "schemas": spec.get("definitions", {}),
-            "securitySchemes": spec.get("securityDefinitions", {})
+            "securitySchemes": spec.get("securityDefinitions", {}),
         }
 
         normalized = {
             "version": spec.get("swagger", "2.0"),
             "info": spec.get("info", {}),
             "servers": servers,
-            "paths": Normalizer._normalize_paths(spec.get("paths", {}), is_openapi3=False),
+            "security": spec.get("security", []),
+            "tags": spec.get("tags", []),
+            "externalDocs": spec.get("externalDocs"),
+            "paths": Normalizer._normalize_paths(
+                spec.get("paths", {}), is_openapi3=False
+            ),
+            "path_metadata": Normalizer._normalize_path_metadata(
+                spec.get("paths", {}), is_openapi3=False
+            ),
             "components": components,
         }
         # print(f"Normalized Swagger 2.0 spec: {json.dumps(normalized, indent=None)}")
         return normalized
 
     @staticmethod
-    def _convert_to_servers(host: str, base_path: str, schemes: List[str]) -> List[Dict[str, str]]:
+    def _normalize_path_metadata(
+        paths: Dict[str, Any], is_openapi3: bool
+    ) -> Dict[str, Any]:
+        """Preserve path-item metadata that is not an HTTP operation."""
+        normalized = {}
+
+        for path, path_item in paths.items():
+            metadata = {}
+            for key in ("summary", "description", "servers"):
+                if key in path_item:
+                    metadata[key] = path_item[key]
+
+            if "parameters" in path_item:
+                metadata["parameters"] = [
+                    Normalizer._normalize_parameter(param, is_openapi3)
+                    for param in path_item.get("parameters", [])
+                ]
+
+            if metadata:
+                normalized[path] = metadata
+
+        return normalized
+
+    @staticmethod
+    def _convert_to_servers(
+        host: str, base_path: str, schemes: List[str]
+    ) -> List[Dict[str, str]]:
         """
         Convert Swagger 2.0 host/basePath/schemes to OpenAPI 3.x servers format.
 
@@ -89,12 +133,12 @@ class Normalizer:
         """
         if not host:
             return []
-        
+
         servers = []
         for scheme in schemes:
             url = f"{scheme}://{host}{base_path}"
             servers.append({"url": url})
-        
+
         return servers
 
     @staticmethod
@@ -110,35 +154,34 @@ class Normalizer:
             Normalized paths
         """
         normalized = {}
-        
+
         for path, path_item in paths.items():
             normalized[path] = {}
-            
+
             # Extract path-level parameters
             path_params = path_item.get("parameters", [])
-            
+
             # Normalize path-level parameters
             if path_params and not is_openapi3:
-                path_params = [Normalizer._normalize_parameter(p, is_openapi3=False) for p in path_params]
-            
+                path_params = [
+                    Normalizer._normalize_parameter(p, is_openapi3=False)
+                    for p in path_params
+                ]
+
             # Process each HTTP method
             for method in ["get", "post", "put", "delete", "patch", "options", "head"]:
                 if method in path_item:
                     operation = path_item[method]
                     normalized_operation = Normalizer._normalize_operation(
-                        operation, 
-                        path_params, 
-                        is_openapi3
+                        operation, path_params, is_openapi3
                     )
                     normalized[path][method] = normalized_operation
-        
+
         return normalized
 
     @staticmethod
     def _normalize_operation(
-        operation: Dict[str, Any], 
-        path_params: List[Dict[str, Any]], 
-        is_openapi3: bool
+        operation: Dict[str, Any], path_params: List[Dict[str, Any]], is_openapi3: bool
     ) -> Dict[str, Any]:
         """
         Normalize an operation to common format.
@@ -160,17 +203,21 @@ class Normalizer:
             "security": operation.get("security", []),
         }
 
+        for key in ("servers", "callbacks", "externalDocs"):
+            if key in operation:
+                normalized[key] = operation[key]
+
         # Normalize parameters
         op_params = operation.get("parameters", [])
         all_params = []
-        
+
         # Add path-level parameters first
         all_params.extend(path_params)
-        
+
         # Process operation-level parameters
         body_param = None
         consumes = operation.get("consumes", ["application/json"])
-        
+
         for param in op_params:
             if not is_openapi3 and param.get("in") == "body":
                 # Extract body parameter for Swagger 2.0
@@ -179,7 +226,7 @@ class Normalizer:
                 # Normalize non-body parameters
                 normalized_param = Normalizer._normalize_parameter(param, is_openapi3)
                 all_params.append(normalized_param)
-        
+
         normalized["parameters"] = all_params
 
         # Handle request body
@@ -191,22 +238,23 @@ class Normalizer:
         else:
             # Convert Swagger 2.0 body parameter to requestBody
             if body_param:
-                normalized["requestBody"] = Normalizer._convert_body_param_to_request_body(
-                    body_param, 
-                    consumes
+                normalized["requestBody"] = (
+                    Normalizer._convert_body_param_to_request_body(body_param, consumes)
                 )
 
         # Normalize responses
         normalized["responses"] = Normalizer._normalize_responses(
             operation.get("responses", {}),
             operation.get("produces", ["application/json"]),
-            is_openapi3
+            is_openapi3,
         )
 
         return normalized
 
     @staticmethod
-    def _normalize_parameter(param: Dict[str, Any], is_openapi3: bool) -> Dict[str, Any]:
+    def _normalize_parameter(
+        param: Dict[str, Any], is_openapi3: bool
+    ) -> Dict[str, Any]:
         """
         Normalize a parameter to common format (always use schema wrapper).
 
@@ -245,24 +293,35 @@ class Normalizer:
         else:
             # Convert Swagger 2.0 format to schema wrapper
             schema = {}
-            for key in ["type", "format", "items", "enum", "default", "minimum", "maximum", 
-                       "minLength", "maxLength", "pattern", "minItems", "maxItems"]:
+            for key in [
+                "type",
+                "format",
+                "items",
+                "enum",
+                "default",
+                "minimum",
+                "maximum",
+                "minLength",
+                "maxLength",
+                "pattern",
+                "minItems",
+                "maxItems",
+            ]:
                 if key in param:
                     schema[key] = param[key]
-            
+
             # Handle collection format
             if "collectionFormat" in param:
                 schema["collectionFormat"] = param["collectionFormat"]
                 normalized["collectionFormat"] = param["collectionFormat"]
-            
+
             normalized["schema"] = normalize_nullable_schema(schema)
 
         return normalized
 
     @staticmethod
     def _convert_body_param_to_request_body(
-        body_param: Dict[str, Any], 
-        consumes: List[str]
+        body_param: Dict[str, Any], consumes: List[str]
     ) -> Dict[str, Any]:
         """
         Convert Swagger 2.0 body parameter to OpenAPI 3.x requestBody.
@@ -276,21 +335,19 @@ class Normalizer:
         """
         content = {}
         schema = normalize_nullable_schema(body_param.get("schema", {}))
-        
+
         for media_type in consumes:
             content[media_type] = {"schema": schema}
-        
+
         return {
             "description": body_param.get("description", ""),
             "required": body_param.get("required", False),
-            "content": content
+            "content": content,
         }
 
     @staticmethod
     def _normalize_responses(
-        responses: Dict[str, Any], 
-        produces: List[str],
-        is_openapi3: bool
+        responses: Dict[str, Any], produces: List[str], is_openapi3: bool
     ) -> Dict[str, Any]:
         """
         Normalize responses to common format (always use content wrapper).
@@ -304,17 +361,15 @@ class Normalizer:
             Normalized responses
         """
         normalized = {}
-        
+
         for status_code, response in responses.items():
-            normalized_response = {
-                "description": response.get("description", "")
-            }
+            normalized_response = {"description": response.get("description", "")}
 
             if is_openapi3:
                 # Already has content wrapper
                 if "content" in response:
-                    normalized_response["content"] = Normalizer._normalize_content_schemas(
-                        response["content"]
+                    normalized_response["content"] = (
+                        Normalizer._normalize_content_schemas(response["content"])
                     )
                 if "headers" in response:
                     normalized_response["headers"] = Normalizer._normalize_headers(
@@ -329,14 +384,14 @@ class Normalizer:
                             "schema": normalize_nullable_schema(response["schema"])
                         }
                     normalized_response["content"] = content
-                
+
                 if "headers" in response:
                     normalized_response["headers"] = Normalizer._normalize_headers(
                         response["headers"], is_openapi3=False
                     )
-            
+
             normalized[status_code] = normalized_response
-        
+
         return normalized
 
     @staticmethod
@@ -350,17 +405,12 @@ class Normalizer:
         Returns:
             Parameters organized by type
         """
-        params = {
-            "query": {},
-            "path": {},
-            "header": {},
-            "cookie": {}
-        }
+        params = {"query": {}, "path": {}, "header": {}, "cookie": {}}
 
         for param in operation.get("parameters", []):
             param_in = param.get("in", "")
             param_name = param.get("name", "")
-            
+
             if param_in in params:
                 params[param_in][param_name] = {
                     "required": param.get("required", False),
@@ -467,8 +517,10 @@ class Normalizer:
                         normalized_header["schema"]
                     )
                 if "content" in normalized_header:
-                    normalized_header["content"] = Normalizer._normalize_content_schemas(
-                        normalized_header["content"]
+                    normalized_header["content"] = (
+                        Normalizer._normalize_content_schemas(
+                            normalized_header["content"]
+                        )
                     )
             else:
                 schema = {}

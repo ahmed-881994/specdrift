@@ -17,6 +17,7 @@ ChangeCategory = Literal[
     "schema_constraint",
     "media_type",
     "header",
+    "parameter_serialization",
     "security",
     "server",
     "webhook",
