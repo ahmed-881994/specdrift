@@ -1,0 +1,69 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: Fixture API
+  version: 1.0.0
+paths:
+  /users:
+    post:
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - active
+            - pending
+            - suspended
+        profile:
+          type:
+            - object
+            - 'null'
+          properties:
+            displayName:
+              type: string
+              minLength: 1
+webhooks:
+  invoice.paid:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                eventId:
+                  type: string
+      responses:
+        '200':
+          description: OK
+  user.deleted:
+    post:
+      responses:
+        '200':
+          description: OK

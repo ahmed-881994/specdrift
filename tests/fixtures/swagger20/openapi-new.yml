@@ -1,0 +1,29 @@
+openapi: 3.1.0
+info:
+  title: Cross Version Fixture
+  version: 2.0.0
+servers:
+  - url: https://api.example.com/v2
+paths:
+  /orders:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+components:
+  schemas:
+    Order:
+      type: object
+      required:
+        - id
+        - total
+      properties:
+        id:
+          type: string
+        total:
+          type: number
+          minimum: 1

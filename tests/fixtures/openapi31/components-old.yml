@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info:
+  title: Fixture Components
+  version: 1.0.0
+components:
+  schemas:
+    Money:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          enum:
+            - USD
+            - EUR
+            - GBP

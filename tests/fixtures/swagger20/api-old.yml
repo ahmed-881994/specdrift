@@ -1,0 +1,68 @@
+swagger: '2.0'
+info:
+  title: Swagger Fixture API
+  version: 1.0.0
+host: api.example.com
+basePath: /v1
+schemes:
+  - https
+consumes:
+  - application/json
+  - application/xml
+produces:
+  - application/json
+  - text/plain
+securityDefinitions:
+  api_key:
+    type: apiKey
+    name: X-API-Key
+    in: header
+paths:
+  /users:
+    post:
+      operationId: createUser
+      consumes:
+        - application/json
+        - application/xml
+      produces:
+        - application/json
+        - text/plain
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/User'
+        - name: tags
+          in: query
+          type: array
+          items:
+            type: string
+          collectionFormat: csv
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/User'
+          headers:
+            X-Trace-Id:
+              type: string
+definitions:
+  User:
+    type: object
+    required:
+      - id
+      - status
+    properties:
+      id:
+        type: string
+        format: uuid
+      status:
+        type: string
+        enum:
+          - active
+          - pending
+          - suspended
+      name:
+        type: string
+        minLength: 1

@@ -716,6 +716,9 @@ class Differ:
 
             old_schema = old_schemas[schema_name]
             new_schema = new_schemas[schema_name]
+            component_details = self._component_details(
+                component_type, schema_name, component_ref_index
+            )
             if not isinstance(old_schema, dict) or not isinstance(new_schema, dict):
                 if old_schema != new_schema:
                     self.changes.append(
@@ -725,13 +728,12 @@ class Differ:
                             "changed",
                             old_value=old_schema,
                             new_value=new_schema,
-                            details=self._component_details(
-                                component_type, schema_name, component_ref_index
-                            ),
+                            details=component_details,
                         )
                     )
                 continue
 
+            change_start = len(self.changes)
             self._diff_schema(
                 f"#/components/schemas/{self._json_pointer_escape(schema_name)}",
                 "",
@@ -741,6 +743,7 @@ class Differ:
                 self._component_pointer(component_type, schema_name),
                 schema_name,
             )
+            self._add_component_details_to_changes(change_start, component_details)
 
     def _diff_component_map(
         self,
@@ -812,6 +815,19 @@ class Differ:
             details["impacted_operations"] = impacted_operations
         return details
 
+    def _add_component_details_to_changes(
+        self, change_start: int, component_details: Dict[str, Any]
+    ) -> None:
+        """Attach reusable-component context to nested component schema changes."""
+        if not component_details:
+            return
+
+        for change in self.changes[change_start:]:
+            if change.category not in {"component_schema", "schema_constraint"}:
+                continue
+            for key, value in component_details.items():
+                change.details.setdefault(key, value)
+
     def _build_component_ref_index(
         self,
         old_paths: Dict[str, Any],
@@ -858,14 +874,26 @@ class Differ:
         refs: Set[str] = set()
         if isinstance(value, dict):
             ref = value.get("$ref")
-            if isinstance(ref, str) and ref.startswith("#/components/"):
-                refs.add(ref)
+            if isinstance(ref, str):
+                canonical_ref = self._canonical_component_ref(ref)
+                if canonical_ref:
+                    refs.add(canonical_ref)
             for child in value.values():
                 refs.update(self._extract_component_refs(child))
         elif isinstance(value, list):
             for item in value:
                 refs.update(self._extract_component_refs(item))
         return refs
+
+    @staticmethod
+    def _canonical_component_ref(ref: str) -> Optional[str]:
+        """Return a comparable OpenAPI component ref for local reusable refs."""
+        if ref.startswith("#/components/"):
+            return ref
+        definitions_prefix = "#/definitions/"
+        if ref.startswith(definitions_prefix):
+            return "#/components/schemas/" + ref[len(definitions_prefix):]
+        return None
 
     def _diff_endpoints(
         self, old_paths: Dict[str, Any], new_paths: Dict[str, Any]
