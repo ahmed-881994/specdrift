@@ -77,6 +77,8 @@
         const results = document.getElementById('results');
         const summary = result.summary;
         const changes = result.changes;
+        const report = normalizeReport(result);
+        const filters = { type: null, surface: null, category: null };
 
         let html = `
             <div class="summary repaint-result-summary">
@@ -97,18 +99,21 @@
 
         html += `
                 <div class="summary-grid repaint-result-grid">
-                    <div class="summary-item repaint-result-metric breaking" data-filter="breaking">
+                    <button type="button" class="summary-item repaint-result-metric breaking" data-filter-kind="type" data-filter-value="breaking">
                         <span class="count">${summary.breaking}</span>
-                        <span class="label">Breaking Changes</span>
-                    </div>
-                    <div class="summary-item repaint-result-metric potentially-breaking" data-filter="potentially-breaking">
+                        <span class="label">Breaking</span>
+                        <span class="metric-help">Must fix before release</span>
+                    </button>
+                    <button type="button" class="summary-item repaint-result-metric potentially-breaking" data-filter-kind="type" data-filter-value="potentially_breaking">
                         <span class="count">${summary.potentially_breaking}</span>
-                        <span class="label">Potentially Breaking</span>
-                    </div>
-                    <div class="summary-item repaint-result-metric non-breaking" data-filter="non-breaking">
+                        <span class="label">Risky</span>
+                        <span class="metric-help">Check client impact</span>
+                    </button>
+                    <button type="button" class="summary-item repaint-result-metric non-breaking" data-filter-kind="type" data-filter-value="non_breaking">
                         <span class="count">${summary.non_breaking}</span>
-                        <span class="label">Non-Breaking Changes</span>
-                    </div>
+                        <span class="label">Safe</span>
+                        <span class="metric-help">Usually additive</span>
+                    </button>
                 </div>
             </div>
         `;
@@ -116,78 +121,231 @@
         if (changes.length === 0) {
             html += '<p class="no-changes">No changes detected</p>';
         } else {
+            html += renderFilterPanel(report);
             html += '<div class="changes-list">';
 
-            // Group by type
-            const breakingChanges = changes.filter(c => c.type === 'breaking');
-            const potentialChanges = changes.filter(c => c.type === 'potentially_breaking');
-            const nonBreakingChanges = changes.filter(c => c.type === 'non_breaking');
-
-            if (breakingChanges.length > 0) {
-                html += renderChangeGroup('Breaking Changes', breakingChanges, 'breaking');
-            }
-            if (potentialChanges.length > 0) {
-                html += renderChangeGroup('Potentially Breaking Changes', potentialChanges, 'potentially-breaking');
-            }
-            if (nonBreakingChanges.length > 0) {
-                html += renderChangeGroup('Non-Breaking Changes', nonBreakingChanges, 'non-breaking');
+            for (const group of sortGroupsBySeverity(report.groups)) {
+                html += renderChangeGroup(group);
             }
 
             html += '</div>';
+            html += '<p id="emptyFilterMessage" class="no-changes" hidden>No changes match the selected filters</p>';
         }
 
         results.innerHTML = html;
 
-        // Add click handlers for filtering
-        const summaryItems = document.querySelectorAll('.summary-item');
+        const filterButtons = document.querySelectorAll('[data-filter-kind]');
         const showAllBtn = document.getElementById('showAll');
 
-        summaryItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const filterType = item.getAttribute('data-filter');
-                filterChanges(filterType);
-
-                // Update active state
-                summaryItems.forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-
-                showAllBtn.hidden = false;
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const kind = button.getAttribute('data-filter-kind');
+                const value = button.getAttribute('data-filter-value');
+                filters[kind] = filters[kind] === value ? null : value;
+                applyFilters(filters);
             });
         });
 
-        showAllBtn.addEventListener('click', () => {
-            filterChanges(null);
-            summaryItems.forEach(i => i.classList.remove('active'));
-            showAllBtn.hidden = true;
-        });
-    }
-
-    function filterChanges(type) {
-        const changeGroups = document.querySelectorAll('.change-group');
-
-        if (!type) {
-            // Show all
-            changeGroups.forEach(group => group.hidden = false);
-        } else {
-            // Filter by type
-            changeGroups.forEach(group => {
-                group.hidden = !group.classList.contains(type);
+        if (showAllBtn) {
+            showAllBtn.addEventListener('click', () => {
+                filters.type = null;
+                filters.surface = null;
+                filters.category = null;
+                applyFilters(filters);
             });
         }
     }
 
-    function renderChangeGroup(title, changes, className) {
-        let html = `<div class="change-group repaint-change-group ${className}">`;
-        html += `<h3>${title}</h3>`;
+    function normalizeReport(result) {
+        if (result.report && Array.isArray(result.report.groups)) {
+            return result.report;
+        }
+
+        const grouped = new Map();
+        for (const change of result.changes || []) {
+            const surface = inferSurface(change);
+            const key = `${surface}:${change.method || ''}:${change.path || change.field_name || change.category}`;
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    key,
+                    surface,
+                    surface_label: formatLabel(surface),
+                    title: change.path || change.field_name || formatLabel(change.category),
+                    subtitle: change.method ? `${change.method} operation` : formatLabel(change.category),
+                    counts: { breaking: 0, potentially_breaking: 0, non_breaking: 0, total: 0 },
+                    categories: [],
+                    changes: []
+                });
+            }
+
+            const group = grouped.get(key);
+            if (change.type in group.counts) group.counts[change.type] += 1;
+            group.counts.total += 1;
+            group.changes.push(change);
+            if (!group.categories.includes(change.category)) group.categories.push(change.category);
+        }
+
+        const changes = result.changes || [];
+        return {
+            total: changes.length,
+            facets: {
+                types: facetItems(changes, 'type'),
+                surfaces: facetItems(changes.map(change => ({ surface: inferSurface(change) })), 'surface'),
+                categories: facetItems(changes, 'category')
+            },
+            groups: Array.from(grouped.values())
+        };
+    }
+
+    function severityRank(type) {
+        const order = { breaking: 0, potentially_breaking: 1, non_breaking: 2 };
+        return Object.prototype.hasOwnProperty.call(order, type) ? order[type] : 99;
+    }
+
+    function groupSeverityRank(group) {
+        const counts = group.counts || {};
+        if ((counts.breaking || 0) > 0) return severityRank('breaking');
+        if ((counts.potentially_breaking || 0) > 0) return severityRank('potentially_breaking');
+        return severityRank('non_breaking');
+    }
+
+    function sortGroupsBySeverity(groups) {
+        return [...groups].sort((a, b) => {
+            const severityDiff = groupSeverityRank(a) - groupSeverityRank(b);
+            if (severityDiff !== 0) return severityDiff;
+            const surfaceDiff = String(a.surface || '').localeCompare(String(b.surface || ''));
+            if (surfaceDiff !== 0) return surfaceDiff;
+            return String(a.title || '').localeCompare(String(b.title || ''));
+        });
+    }
+
+    function sortChangesBySeverity(changes) {
+        return [...changes].sort((a, b) => {
+            const severityDiff = severityRank(a.type) - severityRank(b.type);
+            if (severityDiff !== 0) return severityDiff;
+            return (a._result_index || 0) - (b._result_index || 0);
+        });
+    }
+
+    function facetItems(items, key) {
+        const counts = new Map();
+        for (const item of items) {
+            const value = item[key];
+            if (!value) continue;
+            counts.set(value, (counts.get(value) || 0) + 1);
+        }
+        return Array.from(counts.entries()).map(([value, count]) => ({
+            key: value,
+            label: filterLabel(key, value),
+            count
+        })).sort((a, b) => a.label.localeCompare(b.label));
+    }
+
+    function inferSurface(change) {
+        const schemaPath = change.details?.schema_path || '';
+        if (change.category === 'webhook' || schemaPath.startsWith('#/webhooks')) return 'webhooks';
+        if (change.category === 'callback' || schemaPath.startsWith('#/components/callbacks')) return 'callbacks';
+        if (schemaPath.startsWith('#/components') || change.path?.startsWith('#/components')) return 'components';
+        if (['security', 'server', 'metadata'].includes(change.category) && !change.path) return 'global';
+        return 'operations';
+    }
+
+    function renderFilterPanel(report) {
+        let html = '<div class="result-filter-panel">';
+        html += '<div class="filter-section">';
+        html += '<div class="filter-section-copy">';
+        html += '<span class="filter-section-label">Where did it change?</span>';
+        html += '<p>Pick the part of the API you want to inspect.</p>';
+        html += '</div>';
+        html += renderFilterChips('surface', report.facets.surfaces || []);
+        html += '</div>';
+        html += '<div class="filter-section">';
+        html += '<div class="filter-section-copy">';
+        html += '<span class="filter-section-label">What changed?</span>';
+        html += '<p>Pick the kind of contract change.</p>';
+        html += '</div>';
+        html += renderFilterChips('category', report.facets.categories || []);
+        html += '</div>';
+        html += '</div>';
+        return html;
+    }
+
+    function renderFilterChips(kind, items) {
+        if (!items.length) return '<span class="filter-empty">None</span>';
+        return `<div class="filter-chip-list">${items.map(item => `
+            <button type="button" class="filter-chip" data-filter-kind="${kind}" data-filter-value="${escapeHtml(item.key)}" aria-pressed="false">
+                <span class="filter-chip-check" aria-hidden="true">✓</span>
+                <span>${escapeHtml(item.label)}</span>
+                <strong>${item.count}</strong>
+            </button>
+        `).join('')}</div>`;
+    }
+
+    function applyFilters(filters) {
+        const buttons = document.querySelectorAll('[data-filter-kind]');
+        const showAllBtn = document.getElementById('showAll');
+        let visibleItems = 0;
+
+        buttons.forEach(button => {
+            const kind = button.getAttribute('data-filter-kind');
+            const value = button.getAttribute('data-filter-value');
+            const active = filters[kind] === value;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('.change-row').forEach(row => {
+            const matches = (!filters.type || row.dataset.type === filters.type)
+                && (!filters.surface || row.dataset.surface === filters.surface)
+                && (!filters.category || row.dataset.category === filters.category);
+            row.classList.toggle('is-filter-hidden', !matches);
+            if (matches) visibleItems += 1;
+        });
+
+        document.querySelectorAll('.change-group').forEach(group => {
+            const visibleRows = Array.from(group.querySelectorAll('.change-row'))
+                .filter(row => !row.classList.contains('is-filter-hidden'));
+            const hasVisibleRows = visibleRows.length > 0;
+            group.classList.toggle('is-filter-hidden', !hasVisibleRows);
+            group.querySelectorAll('.change-group-counts [data-count-type]').forEach(count => {
+                const countType = count.getAttribute('data-count-type');
+                count.classList.toggle('is-filter-hidden', Boolean(filters.type) && filters.type !== countType);
+            });
+        });
+
+        const hasFilters = Boolean(filters.type || filters.surface || filters.category);
+        if (showAllBtn) showAllBtn.hidden = !hasFilters;
+
+        const emptyFilterMessage = document.getElementById('emptyFilterMessage');
+        if (emptyFilterMessage) emptyFilterMessage.hidden = visibleItems > 0;
+    }
+
+    function renderChangeGroup(group) {
+        let html = `<section class="change-group repaint-change-group" data-surface="${escapeHtml(group.surface)}">`;
+        html += '<div class="change-group-heading">';
+        html += '<div>';
+        html += `<span class="change-group-surface">${escapeHtml(group.surface_label || formatLabel(group.surface))}</span>`;
+        html += `<h3>${escapeHtml(group.title)}</h3>`;
+        if (group.subtitle) {
+            html += `<p>${escapeHtml(group.subtitle)}</p>`;
+        }
+        html += '</div>';
+        html += '<div class="change-group-counts" aria-label="Group change counts">';
+        html += `<span class="tone-del" data-count-type="breaking"><strong>${group.counts.breaking || 0}</strong><em>Breaking</em></span>`;
+        html += `<span class="tone-warn" data-count-type="potentially_breaking"><strong>${group.counts.potentially_breaking || 0}</strong><em>Risky</em></span>`;
+        html += `<span class="tone-add" data-count-type="non_breaking"><strong>${group.counts.non_breaking || 0}</strong><em>Safe</em></span>`;
+        html += '</div>';
+        html += '</div>';
         html += '<ul>';
 
-        for (const change of changes) {
-            html += '<li>';
+        for (const change of sortChangesBySeverity(group.changes)) {
+            html += `<li class="change-row ${typeClass(change.type)}" data-type="${escapeHtml(change.type)}" data-category="${escapeHtml(change.category)}" data-surface="${escapeHtml(group.surface)}">`;
             html += '<div class="change-item repaint-change-item">';
 
             // Main change header with better spacing
             html += '<div class="change-header">';
-            html += `<span class="change-category">${formatCategory(change.category)}</span>`;
+            html += `<span class="change-impact ${typeClass(change.type)}">${formatImpact(change.type)}</span>`;
+            html += `<span class="change-category">${escapeHtml(filterLabel('category', change.category))}</span>`;
 
             // Path and method in separate line if method exists
             if (change.method) {
@@ -247,8 +405,55 @@
             html += '</li>';
         }
 
-        html += '</ul></div>';
+        html += '</ul></section>';
         return html;
+    }
+
+    function typeClass(type) {
+        return String(type || '').replace(/_/g, '-');
+    }
+
+    function formatImpact(value) {
+        if (value === 'potentially_breaking') return 'RISKY';
+        if (value === 'non_breaking') return 'SAFE';
+        return 'BREAKING';
+    }
+
+    function filterLabel(kind, value) {
+        const labels = {
+            surface: {
+                operations: 'Endpoints',
+                components: 'Reusable schemas',
+                webhooks: 'Webhook events',
+                callbacks: 'Callback requests',
+                global: 'API settings'
+            },
+            category: {
+                endpoint: 'Endpoint added/removed',
+                method: 'HTTP method changed',
+                parameter: 'Request parameter changed',
+                schema: 'Request/response field changed',
+                response: 'Response status changed',
+                request_body: 'Request body changed',
+                component: 'Reusable component changed',
+                component_schema: 'Reusable schema field changed',
+                schema_constraint: 'Validation rule changed',
+                media_type: 'Content type changed',
+                header: 'Header changed',
+                parameter_serialization: 'Parameter format changed',
+                security: 'Authentication changed',
+                server: 'Server URL changed',
+                webhook: 'Webhook changed',
+                callback: 'Callback changed',
+                metadata: 'Documentation changed'
+            },
+            type: {
+                breaking: 'Breaking',
+                potentially_breaking: 'Risky',
+                non_breaking: 'Safe'
+            }
+        };
+        return labels[kind]?.[value] || formatLabel(value);
     }
 
     function renderStructuredDetails(details) {

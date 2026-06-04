@@ -7,6 +7,7 @@ Coordinates parsing, normalization, and diffing of specifications.
 from typing import Dict, Any
 from app.core.parser import Parser, ParseError
 from app.core.differ import Differ
+from app.services.result_presenter import build_result_report
 
 
 class DiffService:
@@ -46,8 +47,10 @@ class DiffService:
             differ = Differ()
             diff_result = differ.diff(old_spec, new_spec)
 
-            # Return DiffResult as dictionary
-            return diff_result.to_dict()
+            # Return DiffResult as dictionary with presentation metadata
+            result = diff_result.to_dict()
+            result["report"] = build_result_report(result.get("changes", []))
+            return result
 
         except ParseError as e:
             raise ValueError(f"Specification parsing error: {str(e)}")
