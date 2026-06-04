@@ -685,6 +685,92 @@ class Classifier:
         )
 
     @staticmethod
+    def classify_webhook_change(
+        webhook_name: str,
+        change_type: str,
+        method: str = "",
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify top-level webhook additions, removals, and operation changes."""
+        rule_by_change_type = {
+            "removed": "webhook_removed",
+            "added": "webhook_added",
+            "changed": "webhook_changed",
+            "operation_removed": "webhook_operation_removed",
+            "operation_added": "webhook_operation_added",
+        }
+        rule_type = rule_by_change_type.get(change_type, "webhook_changed")
+        change_details = Classifier._merge_details(
+            {
+                "metadata_scope": "webhook",
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category="webhook",
+            path=webhook_name,
+            method=Classifier._method(method),
+            field_name=webhook_name,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
+    def classify_callback_change(
+        path: str,
+        method: str,
+        callback_name: str,
+        change_type: str,
+        expression: str = "",
+        callback_method: str = "",
+        old_value: Any = None,
+        new_value: Any = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> Change:
+        """Classify operation callback additions, removals, and nested path changes."""
+        rule_by_change_type = {
+            "removed": "callback_removed",
+            "added": "callback_added",
+            "changed": "callback_changed",
+            "expression_removed": "callback_expression_removed",
+            "expression_added": "callback_expression_added",
+            "operation_removed": "callback_operation_removed",
+            "operation_added": "callback_operation_added",
+        }
+        rule_type = rule_by_change_type.get(change_type, "callback_changed")
+        field_name = callback_name
+        if expression:
+            field_name = f"{callback_name} {expression}"
+
+        change_details = Classifier._merge_details(
+            {
+                "metadata_scope": "callback",
+                "callback_name": callback_name,
+                "callback_expression": expression,
+                "callback_method": callback_method.upper() if callback_method else "",
+                "old_value": old_value,
+                "new_value": new_value,
+            },
+            details,
+        )
+
+        return Change(
+            type=classify_change(rule_type),
+            category="callback",
+            path=path,
+            method=Classifier._method(method),
+            field_name=field_name,
+            message=get_rule_message(rule_type),
+            details=change_details,
+        )
+
+    @staticmethod
     def classify_parameter_serialization_change(
         path: str,
         method: str,

@@ -2814,6 +2814,294 @@ class TestDiffer:
             == "#/paths/~1subscriptions/post/callbacks/onEvent"
         )
 
+    def test_detect_webhook_removed_and_added(self):
+        """Test OpenAPI 3.1 webhook additions and removals."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "webhooks": {
+                "user.deleted": {
+                    "post": {"responses": {"200": {"description": "OK"}}}
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "webhooks": {
+                "user.created": {
+                    "post": {"responses": {"200": {"description": "OK"}}}
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        removed = next(c for c in result.changes if c.field_name == "user.deleted")
+        added = next(c for c in result.changes if c.field_name == "user.created")
+        assert removed.category == "webhook"
+        assert removed.type == "breaking"
+        assert removed.message == "Webhook removed"
+        assert removed.details["schema_path"] == "#/webhooks/user.deleted"
+        assert added.category == "webhook"
+        assert added.type == "non_breaking"
+        assert added.message == "Webhook added"
+        assert added.details["schema_path"] == "#/webhooks/user.created"
+
+    def test_detect_webhook_operation_removed(self):
+        """Test webhook operation removals are classified separately from normal methods."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "webhooks": {
+                "user.created": {
+                    "post": {"responses": {"200": {"description": "OK"}}},
+                    "put": {"responses": {"200": {"description": "OK"}}},
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "webhooks": {
+                "user.created": {
+                    "post": {"responses": {"200": {"description": "OK"}}}
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(
+            c for c in result.changes if c.category == "webhook" and c.method == "PUT"
+        )
+        assert change.type == "breaking"
+        assert change.message == "Webhook operation removed"
+        assert change.path == "user.created"
+        assert change.details["schema_path"] == "#/webhooks/user.created/put"
+
+    def test_detect_webhook_request_schema_change(self):
+        """Test webhook operation internals reuse schema diffing with webhook pointers."""
+        old_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "webhooks": {
+                "user.created": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "string"},
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.1.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "webhooks": {
+                "user.created": {
+                    "post": {
+                        "requestBody": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"},
+                                        },
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(c for c in result.changes if c.category == "schema")
+        assert change.type == "breaking"
+        assert change.path == "user.created"
+        assert change.method == "POST"
+        assert (
+            change.details["schema_path"]
+            == "#/webhooks/user.created/post/requestBody/content/application~1json/schema/properties/id/type"
+        )
+
+    def test_detect_callback_expression_removed(self):
+        """Test callback runtime-expression removals are classified as callback changes."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/subscriptions": {
+                    "post": {
+                        "callbacks": {
+                            "onEvent": {
+                                "{$request.body#/callbackUrl}": {
+                                    "post": {
+                                        "responses": {"200": {"description": "OK"}}
+                                    }
+                                },
+                                "{$request.body#/fallbackUrl}": {
+                                    "post": {
+                                        "responses": {"200": {"description": "OK"}}
+                                    }
+                                },
+                            }
+                        },
+                        "responses": {"202": {"description": "Accepted"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/subscriptions": {
+                    "post": {
+                        "callbacks": {
+                            "onEvent": {
+                                "{$request.body#/callbackUrl}": {
+                                    "post": {
+                                        "responses": {"200": {"description": "OK"}}
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"202": {"description": "Accepted"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        change = next(
+            c
+            for c in result.changes
+            if c.category == "callback"
+            and c.details.get("callback_expression") == "{$request.body#/fallbackUrl}"
+        )
+        assert change.type == "breaking"
+        assert change.message == "Callback URL expression removed"
+        assert (
+            change.details["schema_path"]
+            == "#/paths/~1subscriptions/post/callbacks/onEvent/{$request.body#~1fallbackUrl}"
+        )
+
+    def test_detect_callback_operation_and_schema_changes(self):
+        """Test nested callback operations are diffed like path operations."""
+        old_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/subscriptions": {
+                    "post": {
+                        "callbacks": {
+                            "onEvent": {
+                                "{$request.body#/callbackUrl}": {
+                                    "post": {
+                                        "requestBody": {
+                                            "content": {
+                                                "application/json": {
+                                                    "schema": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "eventId": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "responses": {"200": {"description": "OK"}},
+                                    },
+                                    "delete": {
+                                        "responses": {"204": {"description": "OK"}}
+                                    },
+                                }
+                            }
+                        },
+                        "responses": {"202": {"description": "Accepted"}},
+                    }
+                }
+            },
+        }
+        new_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "API", "version": "1.0.0"},
+            "paths": {
+                "/subscriptions": {
+                    "post": {
+                        "callbacks": {
+                            "onEvent": {
+                                "{$request.body#/callbackUrl}": {
+                                    "post": {
+                                        "requestBody": {
+                                            "content": {
+                                                "application/json": {
+                                                    "schema": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "eventId": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "responses": {"200": {"description": "OK"}},
+                                    }
+                                }
+                            }
+                        },
+                        "responses": {"202": {"description": "Accepted"}},
+                    }
+                }
+            },
+        }
+
+        result = Differ().diff(old_spec, new_spec)
+
+        operation_change = next(
+            c
+            for c in result.changes
+            if c.category == "callback"
+            and c.details.get("callback_method") == "DELETE"
+        )
+        schema_change = next(
+            c
+            for c in result.changes
+            if c.category == "schema" and c.field_name == "eventId"
+        )
+        assert operation_change.type == "breaking"
+        assert operation_change.message == "Callback operation removed"
+        assert (
+            operation_change.details["schema_path"]
+            == "#/paths/~1subscriptions/post/callbacks/onEvent/{$request.body#~1callbackUrl}/delete"
+        )
+        assert schema_change.type == "breaking"
+        assert (
+            schema_change.details["schema_path"]
+            == "#/paths/~1subscriptions/post/callbacks/onEvent/{$request.body#~1callbackUrl}/post/requestBody/content/application~1json/schema/properties/eventId/type"
+        )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

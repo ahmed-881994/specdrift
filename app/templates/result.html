@@ -218,6 +218,8 @@
                         ? 'Security'
                     : change.category === 'server'
                         ? 'Server'
+                    : change.category === 'webhook'
+                        ? 'Webhook'
                     : change.category === 'callback'
                         ? 'Callback'
                     : change.category === 'schema' || change.category === 'component_schema'
@@ -254,7 +256,7 @@
             return '';
         }
 
-        const metadataKeys = ['component_type', 'keyword', 'location', 'metadata_scope', 'content_type', 'status_code', 'header_name', 'required', 'ref'];
+        const metadataKeys = ['component_type', 'keyword', 'location', 'metadata_scope', 'content_type', 'status_code', 'header_name', 'callback_name', 'callback_expression', 'callback_method', 'required', 'ref'];
         const handledKeys = new Set(['schema_path', 'old_value', 'new_value', 'impacted_operations', ...metadataKeys]);
         if (
             Object.prototype.hasOwnProperty.call(details, 'old_value') ||

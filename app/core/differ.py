@@ -95,6 +95,7 @@ class Differ:
         self.changes: List[Change] = []
         self.old_version: Optional[str] = None
         self.new_version: Optional[str] = None
+        self._path_pointer_base = "#/paths"
 
     def diff(self, old_spec: Dict[str, Any], new_spec: Dict[str, Any]) -> DiffResult:
         """
@@ -135,6 +136,8 @@ class Differ:
         new_paths = new_normalized.get("paths", {})
         old_path_metadata = old_normalized.get("path_metadata", {})
         new_path_metadata = new_normalized.get("path_metadata", {})
+        old_webhooks = old_normalized.get("webhooks", {})
+        new_webhooks = new_normalized.get("webhooks", {})
 
         # Detect reusable component-level changes
         self._diff_components(old_components, new_components, component_ref_index)
@@ -149,6 +152,9 @@ class Differ:
 
         # Detect method and operation-level changes
         self._diff_operations(old_paths, new_paths)
+
+        # Detect OpenAPI 3.1 webhook changes
+        self._diff_webhooks(old_webhooks, new_webhooks)
 
         # Create summary
         summary = self._create_summary()
@@ -287,7 +293,7 @@ class Differ:
     def _diff_operation_callbacks(
         self, path: str, method: str, old_op: Dict[str, Any], new_op: Dict[str, Any]
     ) -> None:
-        """Detect operation callback additions, removals, and object changes."""
+        """Detect operation callback additions, removals, and nested path changes."""
         old_callbacks = old_op.get("callbacks", {})
         new_callbacks = new_op.get("callbacks", {})
         if not isinstance(old_callbacks, dict) or not isinstance(new_callbacks, dict):
@@ -299,7 +305,7 @@ class Differ:
                     path,
                     method,
                     callback_name,
-                    "callback_removed",
+                    "removed",
                     old_value=old_callbacks[callback_name],
                 )
 
@@ -309,52 +315,234 @@ class Differ:
                     path,
                     method,
                     callback_name,
-                    "callback_added",
+                    "added",
                     new_value=new_callbacks[callback_name],
                 )
 
         for callback_name in old_callbacks:
-            if (
-                callback_name in new_callbacks
-                and old_callbacks[callback_name] != new_callbacks[callback_name]
-            ):
-                self._append_callback_change(
-                    path,
-                    method,
-                    callback_name,
-                    "callback_changed",
-                    old_value=old_callbacks[callback_name],
-                    new_value=new_callbacks[callback_name],
-                )
+            if callback_name not in new_callbacks:
+                continue
+            old_callback = old_callbacks[callback_name]
+            new_callback = new_callbacks[callback_name]
+            if not isinstance(old_callback, dict) or not isinstance(new_callback, dict):
+                if old_callback != new_callback:
+                    self._append_callback_change(
+                        path,
+                        method,
+                        callback_name,
+                        "changed",
+                        old_value=old_callback,
+                        new_value=new_callback,
+                    )
+                continue
+
+            callback_base = (
+                f"{self._operation_pointer(path, method)}/callbacks/"
+                f"{self._json_pointer_escape(callback_name)}"
+            )
+            self._with_path_pointer_base(
+                callback_base,
+                lambda: self._diff_callback_path_items(
+                    path, method, callback_name, old_callback, new_callback
+                ),
+            )
 
     def _append_callback_change(
         self,
         path: str,
         method: str,
         callback_name: str,
-        rule_type: str,
+        change_type: str,
+        expression: str = "",
+        callback_method: str = "",
         old_value: Any = None,
         new_value: Any = None,
     ) -> None:
         """Append a callback metadata change."""
+        schema_path = self._callback_change_pointer(
+            path, method, callback_name, expression, callback_method
+        )
         self.changes.append(
-            Classifier.classify_metadata_change(
+            Classifier.classify_callback_change(
                 path,
+                method,
                 callback_name,
-                rule_type,
-                method=method,
-                category="callback",
+                change_type,
+                expression=expression,
+                callback_method=callback_method,
                 old_value=old_value,
                 new_value=new_value,
-                details={
-                    "schema_path": (
-                        f"{self._operation_pointer(path, method)}/callbacks/"
-                        f"{self._json_pointer_escape(callback_name)}"
-                    ),
-                    "metadata_scope": "operation",
-                },
+                details={"schema_path": schema_path},
             )
         )
+
+    def _diff_callback_path_items(
+        self,
+        path: str,
+        method: str,
+        callback_name: str,
+        old_callback: Dict[str, Any],
+        new_callback: Dict[str, Any],
+    ) -> None:
+        """Diff callback runtime-expression path items."""
+        old_paths = Normalizer._normalize_paths(old_callback, is_openapi3=True)
+        new_paths = Normalizer._normalize_paths(new_callback, is_openapi3=True)
+
+        for expression in old_callback:
+            if expression not in new_callback:
+                self._append_callback_change(
+                    path,
+                    method,
+                    callback_name,
+                    "expression_removed",
+                    expression=expression,
+                    old_value=old_callback[expression],
+                )
+
+        for expression in new_callback:
+            if expression not in old_callback:
+                self._append_callback_change(
+                    path,
+                    method,
+                    callback_name,
+                    "expression_added",
+                    expression=expression,
+                    new_value=new_callback[expression],
+                )
+
+        for expression in old_paths:
+            if expression not in new_paths:
+                continue
+            old_methods = old_paths[expression]
+            new_methods = new_paths[expression]
+
+            for callback_method in old_methods:
+                if callback_method not in new_methods:
+                    self._append_callback_change(
+                        path,
+                        method,
+                        callback_name,
+                        "operation_removed",
+                        expression=expression,
+                        callback_method=callback_method,
+                        old_value=old_methods[callback_method],
+                    )
+
+            for callback_method in new_methods:
+                if callback_method not in old_methods:
+                    self._append_callback_change(
+                        path,
+                        method,
+                        callback_name,
+                        "operation_added",
+                        expression=expression,
+                        callback_method=callback_method,
+                        new_value=new_methods[callback_method],
+                    )
+
+            for callback_method in old_methods:
+                if callback_method in new_methods:
+                    self._diff_operation(
+                        expression,
+                        callback_method,
+                        old_methods[callback_method],
+                        new_methods[callback_method],
+                    )
+
+    def _diff_webhooks(
+        self, old_webhooks: Dict[str, Any], new_webhooks: Dict[str, Any]
+    ) -> None:
+        """Detect OpenAPI webhook additions, removals, and operation changes."""
+        if not isinstance(old_webhooks, dict) or not isinstance(new_webhooks, dict):
+            return
+
+        self._with_path_pointer_base(
+            "#/webhooks",
+            lambda: self._diff_webhook_path_items(old_webhooks, new_webhooks),
+        )
+
+    def _diff_webhook_path_items(
+        self, old_webhooks: Dict[str, Any], new_webhooks: Dict[str, Any]
+    ) -> None:
+        """Diff normalized webhook path items."""
+        for webhook_name in old_webhooks:
+            if webhook_name not in new_webhooks:
+                self.changes.append(
+                    Classifier.classify_webhook_change(
+                        webhook_name,
+                        "removed",
+                        old_value=old_webhooks[webhook_name],
+                        details={
+                            "schema_path": self._path_item_pointer(webhook_name),
+                        },
+                    )
+                )
+
+        for webhook_name in new_webhooks:
+            if webhook_name not in old_webhooks:
+                self.changes.append(
+                    Classifier.classify_webhook_change(
+                        webhook_name,
+                        "added",
+                        new_value=new_webhooks[webhook_name],
+                        details={
+                            "schema_path": self._path_item_pointer(webhook_name),
+                        },
+                    )
+                )
+
+        for webhook_name in old_webhooks:
+            if webhook_name not in new_webhooks:
+                continue
+            old_methods = old_webhooks[webhook_name]
+            new_methods = new_webhooks[webhook_name]
+
+            for method in old_methods:
+                if method not in new_methods:
+                    self.changes.append(
+                        Classifier.classify_webhook_change(
+                            webhook_name,
+                            "operation_removed",
+                            method=method,
+                            old_value=old_methods[method],
+                            details={
+                                "schema_path": self._operation_pointer(
+                                    webhook_name, method
+                                ),
+                            },
+                        )
+                    )
+
+            for method in new_methods:
+                if method not in old_methods:
+                    self.changes.append(
+                        Classifier.classify_webhook_change(
+                            webhook_name,
+                            "operation_added",
+                            method=method,
+                            new_value=new_methods[method],
+                            details={
+                                "schema_path": self._operation_pointer(
+                                    webhook_name, method
+                                ),
+                            },
+                        )
+                    )
+
+            for method in old_methods:
+                if method in new_methods:
+                    self._diff_operation(
+                        webhook_name, method, old_methods[method], new_methods[method]
+                    )
+
+    def _with_path_pointer_base(self, path_pointer_base: str, callback) -> None:
+        """Run a diff step using a different root for path-item pointers."""
+        previous_base = self._path_pointer_base
+        self._path_pointer_base = path_pointer_base
+        try:
+            callback()
+        finally:
+            self._path_pointer_base = previous_base
 
     @staticmethod
     def _metadata_value(spec: Dict[str, Any], field_name: str) -> Any:
@@ -2175,15 +2363,50 @@ class Differ:
         """Escape a path segment for JSON Pointer."""
         return value.replace("~", "~0").replace("/", "~1")
 
-    @classmethod
-    def _path_item_pointer(cls, path: str) -> str:
+    def _path_item_pointer(self, path: str) -> str:
         """Return a stable pointer for an OpenAPI path item."""
-        return f"#/paths/{cls._json_pointer_escape(path)}"
+        return f"{self._path_pointer_base}/{self._json_pointer_escape(path)}"
 
-    @classmethod
-    def _operation_pointer(cls, path: str, method: str) -> str:
+    def _operation_pointer(self, path: str, method: str) -> str:
         """Return a stable pointer for an OpenAPI operation."""
-        return f"{cls._path_item_pointer(path)}/{method.lower()}"
+        return f"{self._path_item_pointer(path)}/{method.lower()}"
+
+    def _callback_pointer(
+        self,
+        path: str,
+        method: str,
+        callback_name: str,
+        expression: str = "",
+        callback_method: str = "",
+    ) -> str:
+        """Return a stable pointer for a callback or a nested callback path item."""
+        pointer = (
+            f"{self._operation_pointer(path, method)}/callbacks/"
+            f"{self._json_pointer_escape(callback_name)}"
+        )
+        if expression:
+            pointer = f"{pointer}/{self._json_pointer_escape(expression)}"
+        if callback_method:
+            pointer = f"{pointer}/{callback_method.lower()}"
+        return pointer
+
+    def _callback_change_pointer(
+        self,
+        path: str,
+        method: str,
+        callback_name: str,
+        expression: str = "",
+        callback_method: str = "",
+    ) -> str:
+        """Return the correct callback pointer inside or outside callback context."""
+        callback_suffix = f"/callbacks/{self._json_pointer_escape(callback_name)}"
+        if expression and self._path_pointer_base.endswith(callback_suffix):
+            if callback_method:
+                return self._operation_pointer(expression, callback_method)
+            return self._path_item_pointer(expression)
+        return self._callback_pointer(
+            path, method, callback_name, expression, callback_method
+        )
 
     @classmethod
     def _root_metadata_pointer(cls, field_name: str) -> str:
@@ -2191,74 +2414,65 @@ class Differ:
         parts = field_name.split(".")
         return "#/" + "/".join(cls._json_pointer_escape(part) for part in parts)
 
-    @classmethod
-    def _path_metadata_pointer(cls, path: str, field_name: str) -> str:
+    def _path_metadata_pointer(self, path: str, field_name: str) -> str:
         """Return a stable pointer for path-item metadata."""
-        return f"{cls._path_item_pointer(path)}/{cls._json_pointer_escape(field_name)}"
+        return f"{self._path_item_pointer(path)}/{self._json_pointer_escape(field_name)}"
 
-    @classmethod
     def _operation_metadata_pointer(
-        cls, path: str, method: str, field_name: str
+        self, path: str, method: str, field_name: str
     ) -> str:
         """Return a stable pointer for operation metadata."""
-        return f"{cls._operation_pointer(path, method)}/{cls._json_pointer_escape(field_name)}"
+        return f"{self._operation_pointer(path, method)}/{self._json_pointer_escape(field_name)}"
 
-    @classmethod
     def _parameter_pointer(
-        cls, path: str, method: str, param_in: str, param_name: str
+        self, path: str, method: str, param_in: str, param_name: str
     ) -> str:
         """Return a stable identity pointer for a normalized parameter."""
-        escaped_location = cls._json_pointer_escape(param_in)
-        escaped_name = cls._json_pointer_escape(param_name)
-        return f"{cls._operation_pointer(path, method)}/parameters/{escaped_location}/{escaped_name}"
+        escaped_location = self._json_pointer_escape(param_in)
+        escaped_name = self._json_pointer_escape(param_name)
+        return f"{self._operation_pointer(path, method)}/parameters/{escaped_location}/{escaped_name}"
 
-    @classmethod
     def _request_body_pointer(
-        cls, path: str, method: str, content_type: str = ""
+        self, path: str, method: str, content_type: str = ""
     ) -> str:
         """Return a stable pointer for a request body or one of its media types."""
-        pointer = f"{cls._operation_pointer(path, method)}/requestBody"
+        pointer = f"{self._operation_pointer(path, method)}/requestBody"
         if content_type:
-            pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
+            pointer = f"{pointer}/content/{self._json_pointer_escape(content_type)}"
         return pointer
 
-    @classmethod
     def _request_schema_pointer(
-        cls, path: str, method: str, content_type: str = ""
+        self, path: str, method: str, content_type: str = ""
     ) -> str:
         """Return a stable pointer for a request body schema."""
-        return f"{cls._request_body_pointer(path, method, content_type)}/schema"
+        return f"{self._request_body_pointer(path, method, content_type)}/schema"
 
-    @classmethod
-    def _response_pointer(cls, path: str, method: str, status_code: str) -> str:
+    def _response_pointer(self, path: str, method: str, status_code: str) -> str:
         """Return a stable pointer for a response."""
-        return f"{cls._operation_pointer(path, method)}/responses/{cls._json_pointer_escape(status_code)}"
+        return f"{self._operation_pointer(path, method)}/responses/{self._json_pointer_escape(status_code)}"
 
-    @classmethod
     def _response_content_pointer(
-        cls, path: str, method: str, status_code: str, content_type: str = ""
+        self, path: str, method: str, status_code: str, content_type: str = ""
     ) -> str:
         """Return a stable pointer for a response media type."""
-        pointer = cls._response_pointer(path, method, status_code)
+        pointer = self._response_pointer(path, method, status_code)
         if content_type:
-            pointer = f"{pointer}/content/{cls._json_pointer_escape(content_type)}"
+            pointer = f"{pointer}/content/{self._json_pointer_escape(content_type)}"
         return pointer
 
-    @classmethod
     def _response_schema_pointer(
-        cls, path: str, method: str, status_code: str, content_type: str = ""
+        self, path: str, method: str, status_code: str, content_type: str = ""
     ) -> str:
         """Return a stable pointer for a response schema."""
-        return f"{cls._response_content_pointer(path, method, status_code, content_type)}/schema"
+        return f"{self._response_content_pointer(path, method, status_code, content_type)}/schema"
 
-    @classmethod
     def _response_header_pointer(
-        cls, path: str, method: str, status_code: str, header_name: str
+        self, path: str, method: str, status_code: str, header_name: str
     ) -> str:
         """Return a stable pointer for a response header."""
         return (
-            f"{cls._response_pointer(path, method, status_code)}/headers/"
-            f"{cls._json_pointer_escape(header_name)}"
+            f"{self._response_pointer(path, method, status_code)}/headers/"
+            f"{self._json_pointer_escape(header_name)}"
         )
 
     @classmethod

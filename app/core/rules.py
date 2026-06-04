@@ -27,7 +27,11 @@ BREAKING_RULES = {
     "response_media_type_removed": "Response media type removed",
     "parameter_serialization_changed": "Parameter serialization changed",
     "security_requirement_added": "Security requirement added",
+    "webhook_removed": "Webhook removed",
+    "webhook_operation_removed": "Webhook operation removed",
     "callback_removed": "Callback removed",
+    "callback_expression_removed": "Callback URL expression removed",
+    "callback_operation_removed": "Callback operation removed",
     "success_response_removed": "Success response (2xx) removed",
 }
 
@@ -47,6 +51,7 @@ POTENTIALLY_BREAKING_RULES = {
     "security_requirement_changed": "Security requirement changed",
     "server_removed": "Server removed",
     "server_changed": "Server changed",
+    "webhook_changed": "Webhook changed",
     "callback_changed": "Callback changed",
     "parameter_made_optional": "Parameter made optional",
     "field_made_optional": "Field made optional",
@@ -70,7 +75,11 @@ NON_BREAKING_RULES = {
     "response_header_added": "Response header added",
     "security_requirement_removed": "Security requirement removed",
     "server_added": "Server added",
+    "webhook_added": "Webhook added",
+    "webhook_operation_added": "Webhook operation added",
     "callback_added": "Callback added",
+    "callback_expression_added": "Callback URL expression added",
+    "callback_operation_added": "Callback operation added",
     "operation_undeprecated": "Operation undeprecated",
     "metadata_changed": "Metadata-only changes",
 }
