@@ -4,12 +4,64 @@ API comparison routes.
 Handles uploading specs and returning diff results.
 """
 
-from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, Form, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from app.services.diff_service import DiffService
 from app.services.spec_fetcher import SpecFetchError, fetch_spec_from_url
 
 router = APIRouter()
+SAMPLES_DIR = Path(__file__).resolve().parents[2] / "samples"
+PETSTORE_SAMPLE = {
+    "name": "Swagger Petstore",
+    "description": "Well-known public Swagger/OpenAPI sample specs for a quick demo comparison.",
+    "old": {
+        "label": "Swagger Petstore 2.0",
+        "source_url": "https://petstore.swagger.io/v2/swagger.json",
+        "file": "petstore2.0.yml",
+    },
+    "new": {
+        "label": "Swagger Petstore OpenAPI 3.1",
+        "source_url": "https://petstore31.swagger.io/api/v31/openapi.json",
+        "file": "petstore3.1.yml",
+    },
+}
+
+
+@router.get("/api/sample-specs")
+async def sample_specs():
+    """
+    Return demo specifications that can be loaded into the upload editors.
+    """
+    try:
+        old_content = (SAMPLES_DIR / PETSTORE_SAMPLE["old"]["file"]).read_text(
+            encoding="utf-8"
+        )
+        new_content = (SAMPLES_DIR / PETSTORE_SAMPLE["new"]["file"]).read_text(
+            encoding="utf-8"
+        )
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500, detail="Sample specifications are unavailable"
+        ) from exc
+
+    return JSONResponse(
+        content={
+            "name": PETSTORE_SAMPLE["name"],
+            "description": PETSTORE_SAMPLE["description"],
+            "old": {
+                "label": PETSTORE_SAMPLE["old"]["label"],
+                "source_url": PETSTORE_SAMPLE["old"]["source_url"],
+                "content": old_content,
+            },
+            "new": {
+                "label": PETSTORE_SAMPLE["new"]["label"],
+                "source_url": PETSTORE_SAMPLE["new"]["source_url"],
+                "content": new_content,
+            },
+        }
+    )
 
 
 @router.post("/api/fetch-spec")

@@ -185,6 +185,7 @@
                 <span>run</span>
                 <strong>spec[A] &rarr; spec[B]</strong>
                 <div>
+                    <button type="button" id="loadSampleSpecs" class="repaint-mini-button">Load Petstore sample</button>
                     <button type="reset" class="repaint-mini-button">Clear</button>
                     <button type="button" id="swapSpecs" class="repaint-mini-button">Swap</button>
                     <button type="submit" class="repaint-button repaint-button--primary">Compare specs</button>
@@ -240,7 +241,8 @@
             status: document.getElementById('oldStatus'),
             bytes: document.getElementById('oldBytes'),
             lines: document.getElementById('oldLines'),
-            version: document.getElementById('oldVersion')
+            version: document.getElementById('oldVersion'),
+            loadedFromUrl: false
         },
         new: {
             textarea: document.getElementById('newSpecText'),
@@ -249,7 +251,8 @@
             status: document.getElementById('newStatus'),
             bytes: document.getElementById('newBytes'),
             lines: document.getElementById('newLines'),
-            version: document.getElementById('newVersion')
+            version: document.getElementById('newVersion'),
+            loadedFromUrl: false
         }
     };
 
@@ -340,6 +343,7 @@
         }
         const data = await response.json();
         state.textarea.value = data.content || '';
+        state.loadedFromUrl = true;
         syncMeta(key);
         const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
         if (pasteTab) activatePanel(pasteTab);
@@ -364,6 +368,59 @@
         throw new Error(`Please provide the ${key === 'old' ? 'old' : 'new'} specification`);
     }
 
+    function setSpecContent(key, content, statusText) {
+        const state = specState[key];
+        state.textarea.value = content || '';
+        state.loadedFromUrl = false;
+        syncMeta(key);
+        if (statusText) state.status.textContent = statusText;
+        const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
+        if (pasteTab) activatePanel(pasteTab);
+    }
+
+    function clearSpecInputs() {
+        Object.entries(specState).forEach(([key, state]) => {
+            state.textarea.value = '';
+            state.textarea.defaultValue = '';
+            state.url.value = '';
+            state.file.value = '';
+            state.loadedFromUrl = false;
+            syncMeta(key);
+            const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
+            if (pasteTab) activatePanel(pasteTab);
+        });
+        document.getElementById('error').hidden = true;
+        document.getElementById('loading').hidden = true;
+    }
+
+    async function loadSampleSpecs() {
+        const button = document.getElementById('loadSampleSpecs');
+        const error = document.getElementById('error');
+        button.disabled = true;
+        button.textContent = 'Loading sample...';
+        error.hidden = true;
+
+        try {
+            const response = await fetch('/api/sample-specs');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Could not load the sample specifications');
+            }
+
+            const sample = await response.json();
+            specState.old.url.value = sample.old?.source_url || '';
+            specState.new.url.value = sample.new?.source_url || '';
+            setSpecContent('old', sample.old?.content, sample.old?.label || 'Sample loaded');
+            setSpecContent('new', sample.new?.content, sample.new?.label || 'Sample loaded');
+        } catch (err) {
+            error.textContent = `Error: ${err.message}`;
+            error.hidden = false;
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Load Petstore sample';
+        }
+    }
+
     document.querySelectorAll('.repaint-tab[data-target]').forEach(button => {
         button.addEventListener('click', () => activatePanel(button));
     });
@@ -386,20 +443,32 @@
     });
 
     Object.entries(specState).forEach(([key, state]) => {
-        state.textarea.addEventListener('input', () => syncMeta(key));
+        state.textarea.addEventListener('input', () => {
+            state.loadedFromUrl = false;
+            syncMeta(key);
+        });
         state.textarea.addEventListener('scroll', () => {
             const gutter = state.textarea.previousElementSibling;
             if (gutter) gutter.scrollTop = state.textarea.scrollTop;
         });
+        state.url.addEventListener('input', () => {
+            if (state.url.value.trim() || !state.loadedFromUrl) return;
+            state.textarea.value = '';
+            state.loadedFromUrl = false;
+            syncMeta(key);
+        });
         state.file.addEventListener('change', async () => {
             if (!state.file.files[0]) return;
             state.textarea.value = await state.file.files[0].text();
+            state.loadedFromUrl = false;
             syncMeta(key);
             const pasteTab = document.querySelector(`[data-target="${key}PasteTab"]`);
             if (pasteTab) activatePanel(pasteTab);
         });
         syncMeta(key);
     });
+
+    document.getElementById('loadSampleSpecs').addEventListener('click', loadSampleSpecs);
 
     document.getElementById('swapSpecs').addEventListener('click', () => {
         const oldText = specState.old.textarea.value;
@@ -409,11 +478,9 @@
         syncMeta('new');
     });
 
-    document.getElementById('comparisonForm').addEventListener('reset', () => {
-        setTimeout(() => {
-            Object.keys(specState).forEach(syncMeta);
-            document.getElementById('error').hidden = true;
-        }, 0);
+    document.getElementById('comparisonForm').addEventListener('reset', event => {
+        event.preventDefault();
+        clearSpecInputs();
     });
 
     document.getElementById('comparisonForm').addEventListener('submit', async event => {
