@@ -79,6 +79,12 @@ async def guides(request: Request):
     return templates.TemplateResponse("guides.html", {"request": request, "enable_ads": False})
 
 
+@app.get("/guides/how-specdrift-works", response_class=HTMLResponse)
+async def how_specdrift_works(request: Request):
+    """Render the SpecDrift working principle guide."""
+    return templates.TemplateResponse("guide_how_specdrift_works.html", {"request": request, "enable_ads": False})
+
+
 @app.get("/guides/openapi-breaking-changes", response_class=HTMLResponse)
 async def openapi_breaking_changes(request: Request):
     """Render the OpenAPI breaking changes guide."""
@@ -133,6 +139,7 @@ async def sitemap_xml():
         ("/", "daily", "1.0"),
         ("/upload", "weekly", "0.8"),
         ("/guides", "weekly", "0.9"),
+        ("/guides/how-specdrift-works", "monthly", "0.8"),
         ("/guides/openapi-breaking-changes", "monthly", "0.8"),
         ("/guides/api-versioning-checklist", "monthly", "0.8"),
         ("/guides/api-contract-testing-ci", "monthly", "0.8"),

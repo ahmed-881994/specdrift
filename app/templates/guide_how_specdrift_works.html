@@ -1,0 +1,228 @@
+{% extends "layout.html" %}
+
+{% block title %}How SpecDrift Works: OpenAPI Comparison Principles{% endblock %}
+{% block meta_description %}Learn how SpecDrift parses Swagger and OpenAPI specifications, compares API contract surfaces, and classifies changes as breaking, risky, or safe.{% endblock %}
+{% block og_title %}How SpecDrift Works{% endblock %}
+{% block og_description %}Understand the working principle behind SpecDrift's OpenAPI comparison engine and impact classification.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "How SpecDrift Works: OpenAPI Comparison Principles",
+  "description": "Learn how SpecDrift parses Swagger and OpenAPI specifications, compares API contract surfaces, and classifies changes as breaking, risky, or safe.",
+  "datePublished": "2026-06-05",
+  "dateModified": "2026-06-05",
+  "author": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "mainEntityOfPage": "{{ site_url }}/guides/how-specdrift-works"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Guides",
+      "item": "{{ site_url }}/guides"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "How SpecDrift Works",
+      "item": "{{ site_url }}/guides/how-specdrift-works"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="content-section article article-principle">
+    <p class="article-kicker">IDX 01 / Working principle</p>
+    <h1>How SpecDrift Works</h1>
+    <p>
+        SpecDrift compares two Swagger or OpenAPI documents as API contracts, not as plain text files. The goal is to
+        answer a practical release question: did this API change in a way that can break existing consumers?
+    </p>
+    <p>
+        The comparison follows a simple pipeline: parse both specs, normalize their shapes, compare each contract
+        surface, then classify the detected differences by impact.
+    </p>
+
+    <section class="principle-flow" aria-label="SpecDrift comparison pipeline">
+        <div>
+            <span>01</span>
+            <strong>Parse</strong>
+            <p>Read JSON or YAML Swagger/OpenAPI documents into structured data.</p>
+        </div>
+        <div>
+            <span>02</span>
+            <strong>Normalize</strong>
+            <p>Convert compatible spec shapes into a representation that can be compared consistently.</p>
+        </div>
+        <div>
+            <span>03</span>
+            <strong>Compare</strong>
+            <p>Walk paths, operations, parameters, bodies, responses, schemas, enums, and security rules.</p>
+        </div>
+        <div>
+            <span>04</span>
+            <strong>Classify</strong>
+            <p>Label each difference as breaking, risky, or safe based on likely client impact.</p>
+        </div>
+    </section>
+
+    <h3>1. SpecDrift Parses the Contract</h3>
+    <p>
+        A raw text diff can be noisy because two specs can look different while describing the same API behavior.
+        SpecDrift starts by parsing the old and new documents as JSON or YAML, then treats them as structured API
+        contracts.
+    </p>
+    <p>
+        This lets the engine look at meaningful API concepts such as <code>GET /orders/{id}</code>, a required query
+        parameter, a response schema, or an OAuth scope instead of only comparing lines in a file.
+    </p>
+
+    <h3>2. It Normalizes Swagger and OpenAPI Shapes</h3>
+    <p>
+        Swagger 2.0 and OpenAPI 3.x describe many of the same ideas with different document structures. SpecDrift
+        normalizes compatible pieces so the comparison can focus on behavior: endpoints, inputs, outputs, schemas, and
+        security requirements.
+    </p>
+
+    <h3>3. It Compares API Surfaces</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Surface</th>
+                <th>Examples SpecDrift reviews</th>
+                <th>Why it matters</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Paths and methods</td>
+                <td>Removed path, new operation, changed method</td>
+                <td>Clients call these operations directly.</td>
+            </tr>
+            <tr>
+                <td>Parameters</td>
+                <td>Required flag, location, type, enum, validation limits</td>
+                <td>Existing requests can fail if inputs become stricter.</td>
+            </tr>
+            <tr>
+                <td>Request bodies</td>
+                <td>Required properties, schema type, content types</td>
+                <td>Clients must send data the server still accepts.</td>
+            </tr>
+            <tr>
+                <td>Responses</td>
+                <td>Status codes, response schemas, headers, fields</td>
+                <td>Generated clients and strict parsers depend on response shape.</td>
+            </tr>
+            <tr>
+                <td>Schemas and enums</td>
+                <td>Property removal, type changes, enum expansion or removal</td>
+                <td>Shared models often define the real consumer contract.</td>
+            </tr>
+            <tr>
+                <td>Security</td>
+                <td>Auth scheme changes, required scopes, alternatives</td>
+                <td>Authentication changes can block otherwise unchanged APIs.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>4. It Classifies the Impact</h3>
+    <p>
+        Each detected difference receives an impact label. The label is not just a description of what changed; it is a
+        release signal for what the team should do next.
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Verdict</th>
+                <th>Meaning</th>
+                <th>Typical next step</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Breaking</td>
+                <td>A current client can fail without changing its code.</td>
+                <td>Fix, version, deprecate, or publish migration guidance.</td>
+            </tr>
+            <tr>
+                <td>Risky</td>
+                <td>The change may be compatible for some clients but needs review.</td>
+                <td>Check client behavior, generated SDKs, tests, and release notes.</td>
+            </tr>
+            <tr>
+                <td>Safe</td>
+                <td>The change is usually additive or less restrictive.</td>
+                <td>Ship normally, while documenting anything users should notice.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Why Semantic Comparison Beats a Plain Text Diff</h3>
+    <p>
+        Moving a schema block, reformatting YAML, or changing the order of keys can make a text diff look busy. A
+        semantic comparison tries to preserve attention for changes that affect consumers.
+    </p>
+    <div class="article-diff" role="img" aria-label="Example OpenAPI diff with changed method, required parameter, and expanded enum">
+        <div class="article-diff__bar">
+            <span>openapi.yaml</span>
+            <span><b class="tone-del">-3</b> <b class="tone-add">+3</b></span>
+        </div>
+        <pre><code><span class="diff-line"><span class="diff-gutter">01</span><span class="diff-mark"></span><span class="diff-code">paths:</span></span>
+<span class="diff-line"><span class="diff-gutter">02</span><span class="diff-mark"></span><span class="diff-code">  /users/{id}:</span></span>
+<span class="diff-line diff-line--del"><span class="diff-gutter">03</span><span class="diff-mark">-</span><span class="diff-code">    get:</span></span>
+<span class="diff-line diff-line--add"><span class="diff-gutter">03</span><span class="diff-mark">+</span><span class="diff-code">    delete:</span></span>
+<span class="diff-line"><span class="diff-gutter">04</span><span class="diff-mark"></span><span class="diff-code">      parameters:</span></span>
+<span class="diff-line diff-line--del"><span class="diff-gutter">05</span><span class="diff-mark">-</span><span class="diff-code">        required: false</span></span>
+<span class="diff-line diff-line--add"><span class="diff-gutter">05</span><span class="diff-mark">+</span><span class="diff-code">        required: true</span></span>
+<span class="diff-line"><span class="diff-gutter">06</span><span class="diff-mark"></span><span class="diff-code">components:</span></span>
+<span class="diff-line"><span class="diff-gutter">07</span><span class="diff-mark"></span><span class="diff-code">  schemas:</span></span>
+<span class="diff-line"><span class="diff-gutter">08</span><span class="diff-mark"></span><span class="diff-code">    User:</span></span>
+<span class="diff-line diff-line--del"><span class="diff-gutter">09</span><span class="diff-mark">-</span><span class="diff-code">      role: { enum: [admin, user] }</span></span>
+<span class="diff-line diff-line--add"><span class="diff-gutter">09</span><span class="diff-mark">+</span><span class="diff-code">      role: { enum: [admin, user, guest] }</span></span></code></pre>
+    </div>
+    <p>
+        In that example, the important questions are not only which lines changed. The important questions are whether
+        an operation disappeared, whether a required input was added, and whether clients can handle a new enum value.
+    </p>
+
+    <h3>What SpecDrift Is Not</h3>
+    <p>
+        SpecDrift is a contract compatibility check. It does not replace runtime integration tests, traffic analysis,
+        API gateway metrics, or human review from API owners. It also depends on the OpenAPI document being close to the
+        behavior your service actually ships.
+    </p>
+    <p>
+        Used well, it gives reviewers a clear first pass: which changes probably break clients, which ones deserve
+        investigation, and which ones are likely safe.
+    </p>
+
+    <p><a class="cta" href="/upload">Compare your API specs</a></p>
+
+    <nav class="related-guides" aria-label="Related guides">
+        <h2>Related Guides</h2>
+        <a href="/guides/openapi-breaking-changes">OpenAPI Breaking Changes</a>
+        <a href="/guides/api-versioning-checklist">API Versioning Checklist</a>
+        <a href="/guides/api-contract-testing-ci">API Contract Testing in CI</a>
+        <a href="/guides/swagger-vs-openapi-compatibility">Swagger vs OpenAPI Compatibility</a>
+    </nav>
+</article>
+{% endblock %}

@@ -24,24 +24,30 @@
       {
         "@type": "ListItem",
         "position": 1,
+        "url": "{{ site_url }}/guides/how-specdrift-works",
+        "name": "How SpecDrift Works"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
         "url": "{{ site_url }}/guides/openapi-breaking-changes",
         "name": "OpenAPI Breaking Changes"
       },
       {
         "@type": "ListItem",
-        "position": 2,
+        "position": 3,
         "url": "{{ site_url }}/guides/api-versioning-checklist",
         "name": "API Versioning Checklist"
       },
       {
         "@type": "ListItem",
-        "position": 3,
+        "position": 4,
         "url": "{{ site_url }}/guides/api-contract-testing-ci",
         "name": "API Contract Testing in CI"
       },
       {
         "@type": "ListItem",
-        "position": 4,
+        "position": 5,
         "url": "{{ site_url }}/guides/swagger-vs-openapi-compatibility",
         "name": "Swagger vs OpenAPI Compatibility"
       }
@@ -77,28 +83,34 @@
                 <h2 id="guides-heading">Choose the review surface.</h2>
             </div>
             <p>
-                Start with breaking-change taxonomy, release versioning, CI gates, or Swagger/OpenAPI format drift.
+                Start with how the engine works, breaking-change taxonomy, release versioning, CI gates, or
+                Swagger/OpenAPI format drift.
             </p>
         </div>
 
         <div class="guide-grid repaint-guide-index-grid">
-            <a class="guide-card" href="/guides/openapi-breaking-changes">
+            <a class="guide-card" href="/guides/how-specdrift-works">
                 <span>IDX 01</span>
+                <h3>How SpecDrift Works</h3>
+                <p>Understand how SpecDrift parses specs, compares API surfaces, and classifies changes by impact.</p>
+            </a>
+            <a class="guide-card" href="/guides/openapi-breaking-changes">
+                <span>IDX 02</span>
                 <h3>OpenAPI Breaking Changes</h3>
                 <p>Learn which changes are breaking, potentially breaking, or safe for existing clients.</p>
             </a>
             <a class="guide-card" href="/guides/api-versioning-checklist">
-                <span>IDX 02</span>
+                <span>IDX 03</span>
                 <h3>API Versioning Checklist</h3>
                 <p>A practical checklist for deciding when to version, deprecate, document, or delay an API change.</p>
             </a>
             <a class="guide-card" href="/guides/api-contract-testing-ci">
-                <span>IDX 03</span>
+                <span>IDX 04</span>
                 <h3>API Contract Testing in CI</h3>
                 <p>Use OpenAPI comparisons as a release gate in pull requests and deployment pipelines.</p>
             </a>
             <a class="guide-card" href="/guides/swagger-vs-openapi-compatibility">
-                <span>IDX 04</span>
+                <span>IDX 05</span>
                 <h3>Swagger vs OpenAPI Compatibility</h3>
                 <p>Understand practical differences between Swagger 2.0 and OpenAPI 3.x when comparing specs.</p>
             </a>
