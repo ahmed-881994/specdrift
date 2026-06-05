@@ -1,233 +1,309 @@
-# SpecDrift - API Contract Drift Detector
+# SpecDrift
 
-A production-ready web tool that detects breaking, potentially breaking, and non-breaking changes between two OpenAPI v3 or Swagger v2 specifications.
+SpecDrift is a lightweight web app for comparing two Swagger/OpenAPI specifications and finding API contract drift before it reaches clients.
 
-## Features
+Paste, upload, or fetch an old spec and a new spec. SpecDrift parses the documents, normalizes Swagger 2.0 and OpenAPI 3.x into a shared model, compares the actual API contract structure, and reports each change as:
 
-- **OpenAPI/Swagger Support**: Compares OpenAPI 3.x and Swagger 2.0 specifications
-- **Multiple Input Methods**: Upload YAML/JSON files or paste specifications directly
-- **Comprehensive Change Detection**: Identifies breaking, potentially breaking, and non-breaking changes
-- **Clean Web UI**: Minimal, developer-friendly interface with no JavaScript frameworks
-- **Deterministic Diffing**: Rule-based diffing with no AI/ML overhead
-- **Fast & Lightweight**: Pure Python with FastAPI backend
+- **Breaking**: likely to break existing clients.
+- **Risky**: potentially breaking and worth review.
+- **Safe**: generally additive or less restrictive.
 
-## What SpecDrift Detects
+It is deterministic, rule-based, and built with FastAPI, Jinja2, vanilla browser JavaScript, and PyYAML.
 
-### Breaking Changes
-- Endpoint removed
-- HTTP method removed
-- Required request parameter added
-- Parameter removed
-- Parameter type changed
-- Required request body field added
-- Request/response field removed
-- Field type changed
-- Enum value removed
-- Success response (2xx) removed
+## Why SpecDrift Exists
 
-### Potentially Breaking Changes
-- Non-2xx response removed
-- Enum value added
-- Default value removed
+API diffs are rarely useful when they stop at text changes. A moved YAML block, reformatted JSON, or reordered schema key should not be treated the same as a removed endpoint or a newly required request field.
 
-### Non-Breaking Changes
-- New endpoint
-- New HTTP method
-- New optional parameter
-- New optional request field
-- New response field
-- Metadata-only changes
+SpecDrift compares parsed API semantics instead:
+
+- Did an endpoint disappear?
+- Did a method get removed?
+- Did a query parameter become required?
+- Did a response schema lose a field?
+- Did a reusable component change in a way that affects real operations?
+- Did a media type, webhook, callback, validation rule, or security requirement change?
+
+The result is a release-focused report that helps decide what needs fixing, documenting, testing, or migration planning.
+
+## Highlights
+
+- Compare Swagger 2.0 and OpenAPI 3.x specs.
+- Accept JSON or YAML.
+- Paste specs, upload files, or fetch public spec URLs.
+- Detect endpoint, method, parameter, request body, response, schema, component, webhook, callback, security, server, metadata, media type, header, and validation constraint changes.
+- Normalize Swagger 2.0 into OpenAPI-style structures before diffing.
+- Support OpenAPI 3.1 component-only specs, webhooks, `jsonSchemaDialect`, and JSON Schema keywords.
+- Track referenced reusable components and show impacted operations when possible.
+- Return structured JSON for automation.
+- Render a grouped, filterable browser report.
+- Store no comparison history by default.
 
 ## Quick Start
 
-### Local Development
+### Prerequisites
 
-1. **Clone and setup**:
-   ```bash
-   cd api-drift-detector
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+- Python 3.11+
+- pip
 
-2. **Run the application**:
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
+### Run Locally
 
-3. **Access the web interface**:
-   Open http://localhost:8000 in your browser
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-### Using Docker
+Open [http://localhost:8000](http://localhost:8000), then go to `/upload` to compare specs.
 
-1. **Build the image**:
-   ```bash
-   docker build -t specdrift .
-   ```
+### Run With Docker
 
-2. **Run the container**:
-   ```bash
-   docker run -p 8000:8000 specdrift
-   ```
+```bash
+docker build -t specdrift .
+docker run -p 8000:8000 specdrift
+```
 
-3. **Access**:
-   Open http://localhost:8000
+Open [http://localhost:8000](http://localhost:8000).
 
-## API Endpoints
+### Run With Docker Compose
 
-### Web Interface
-- `GET /` - Upload page with two file/paste inputs
-- `POST /api/compare` - Compare two specifications (form data: old_spec, new_spec)
-- `POST /api/compare-files` - Compare two specification files (multipart: old_file, new_file)
-- `GET /health` - Health check
+```bash
+docker compose up --build
+```
 
-### Response Format
+## Using The Web App
+
+1. Open `/upload`.
+2. Add the old spec on the left.
+3. Add the new spec on the right.
+4. Use paste, file upload, or URL fetch for either side.
+5. Click **Compare specs**.
+6. Review the `/result` report.
+
+The result page shows:
+
+- Summary counts for breaking, risky, and safe changes.
+- Version labels from `info.title` and `info.version` when available.
+- Filters by severity, API surface, and change category.
+- Grouped changes for endpoints, reusable components, webhooks, callbacks, and global settings.
+- Spec paths, old/new values, schema keywords, content types, status codes, and impacted operations where available.
+
+The browser passes results from `/upload` to `/result` with `sessionStorage`, then clears them after display.
+
+## Short Examples
+
+### Compare Two Spec Files
+
+```bash
+curl -X POST http://localhost:8000/api/compare-files \
+  -F "old_file=@old.yaml" \
+  -F "new_file=@new.yaml"
+```
+
+### Compare Raw Spec Text
+
+```bash
+curl -X POST http://localhost:8000/api/compare \
+  --form-string "old_spec=$(cat old.yaml)" \
+  --form-string "new_spec=$(cat new.yaml)"
+```
+
+### Fetch A Public Spec URL
+
+```bash
+curl -X POST http://localhost:8000/api/fetch-spec \
+  -F "url=https://example.com/openapi.yaml"
+```
+
+For fuller examples with complete specs, expected changes, Python requests, JavaScript fetch, Swagger 2.0, OpenAPI 3.1, and component examples, see [EXAMPLES.md](EXAMPLES.md).
+
+## Response Shape
+
+Comparison endpoints return summary counts, raw changes, optional version labels, and grouped report metadata:
 
 ```json
 {
   "summary": {
-    "breaking": 5,
-    "potentially_breaking": 2,
-    "non_breaking": 3
+    "breaking": 1,
+    "potentially_breaking": 0,
+    "non_breaking": 1,
+    "total": 2
   },
   "changes": [
     {
       "type": "breaking",
-      "category": "endpoint",
-      "path": "/api/users",
-      "method": "GET",
-      "field": null,
-      "message": "Endpoint removed"
-    },
-    {
-      "type": "breaking",
       "category": "parameter",
-      "path": "/api/users",
-      "method": "POST",
-      "field": "email",
+      "path": "/users",
+      "method": "GET",
+      "field_name": "offset",
       "message": "Required request parameter added"
     }
-  ]
+  ],
+  "old_version": "Users API v1.0.0",
+  "new_version": "Users API v1.1.0",
+  "report": {}
 }
 ```
 
-## Example Usage
+The `changes` list is the automation-friendly output. The `report` object is used by the browser UI for grouping and filtering.
 
-### Using the Web UI
-1. Go to http://localhost:8000
-2. Either upload two spec files or paste them directly
-3. Click "Compare Specs"
-4. Review the results
+## What SpecDrift Detects
 
-### Using the API
-```bash
-curl -X POST http://localhost:8000/api/compare \
-  -F "old_spec=@old-spec.yaml" \
-  -F "new_spec=@new-spec.yaml"
-```
+### Breaking Changes
 
-Or with text content:
-```bash
-curl -X POST http://localhost:8000/api/compare \
-  -d "old_spec=$(cat old-spec.json)" \
-  -d "new_spec=$(cat new-spec.json)"
-```
+- Endpoint removed.
+- HTTP method removed.
+- Required parameter added.
+- Parameter removed.
+- Parameter type changed.
+- Parameter serialization changed.
+- Request body removed.
+- Required request body added.
+- Request body made required.
+- Required request field added.
+- Request or response field removed.
+- Field type changed.
+- Request field made required.
+- Enum value removed.
+- Validation constraint made stricter.
+- Referenced reusable component removed.
+- Request or response media type removed.
+- Security requirement added.
+- Success response removed.
+- Webhook, callback, or nested callback operation removed.
+
+### Risky Changes
+
+- Non-2xx response removed.
+- Enum value added.
+- Default value removed or changed.
+- Ambiguous validation constraint changed.
+- Unreferenced reusable component removed.
+- Reusable component changed.
+- Response header removed or changed.
+- Operation ID changed.
+- Operation deprecated.
+- Security requirement changed.
+- Server removed or changed.
+- Parameter, field, or request body made optional.
+- JSON Schema dialect changed.
+- Webhook or callback changed in an ambiguous way.
+
+### Safe Changes
+
+- Endpoint added.
+- HTTP method added.
+- Optional parameter added.
+- Optional request body added.
+- Optional request field added.
+- Response field added.
+- Response status added.
+- Default value added.
+- Validation constraint made less restrictive.
+- Reusable component added.
+- Request or response media type added.
+- Response header added.
+- Security requirement removed.
+- Server added.
+- Webhook, callback, or nested callback operation added.
+- Operation undeprecated.
+- Documentation-only metadata changed.
+
+## How It Works
+
+The comparison pipeline is:
+
+1. `DiffService` detects JSON vs YAML unless a caller provides explicit formats.
+2. `Parser` parses each spec and validates basic Swagger/OpenAPI structure.
+3. `Normalizer` converts Swagger 2.0 and OpenAPI 3.x into a shared internal representation.
+4. `Differ` compares API surfaces and recursively walks schemas.
+5. `Classifier` applies deterministic rules from `rules.py`.
+6. `DiffResult` calculates summary counts.
+7. `result_presenter` groups and labels changes for the web UI.
+
+For a deeper technical walk-through, see [APPLICATION_MANUAL.md](APPLICATION_MANUAL.md).
 
 ## Project Structure
 
-```
-api-drift-detector/
+```text
+specdrift/
 ├── app/
-│   ├── main.py                 # FastAPI app and routes
-│   ├── config.py               # Configuration
+│   ├── main.py                    # FastAPI application setup
+│   ├── config.py                  # Runtime configuration
 │   ├── core/
-│   │   ├── parser.py           # OpenAPI/Swagger parsing
-│   │   ├── normalizer.py       # Spec normalization
-│   │   ├── differ.py           # Core diffing logic
-│   │   ├── rules.py            # Classification rules
-│   │   └── classifier.py       # Change classification
+│   │   ├── parser.py              # JSON/YAML parsing and basic validation
+│   │   ├── normalizer.py          # Swagger/OpenAPI normalization
+│   │   ├── differ.py              # Core comparison engine
+│   │   ├── classifier.py          # Change object classification
+│   │   ├── rules.py               # Rule messages and severity mapping
+│   │   └── schema_utils.py        # Schema helpers and local ref utilities
 │   ├── models/
-│   │   └── change.py           # Change data models
-│   ├── services/
-│   │   └── diff_service.py     # Business logic orchestration
+│   │   └── change.py              # Change and DiffResult dataclasses
 │   ├── routes/
-│   │   ├── compare.py          # Comparison endpoints
-│   │   └── health.py           # Health check endpoint
-│   ├── templates/
-│   │   ├── upload.html         # Upload interface
-│   │   └── result.html         # Results page
-│   └── static/
-│       └── style.css           # Minimal CSS styling
-├── tests/
-│   └── test_diff.py            # Unit tests
-├── requirements.txt            # Python dependencies
-├── Dockerfile                  # Container configuration
-└── README.md                   # This file
+│   │   ├── compare.py             # Compare and fetch endpoints
+│   │   └── health.py              # Health check
+│   ├── services/
+│   │   ├── diff_service.py        # Comparison orchestration
+│   │   ├── result_presenter.py    # Grouped report metadata
+│   │   └── spec_fetcher.py        # Safe remote spec fetching
+│   ├── templates/                 # Jinja2 pages
+│   └── static/                    # CSS and static assets
+├── samples/                       # Example specs
+├── tests/                         # pytest suite
+├── APPLICATION_MANUAL.md          # Detailed technical manual
+├── EXAMPLES.md                    # Example specs and API calls
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
 ```
 
-## Technology Stack
+## Configuration
 
-- **Backend**: Python 3.11+, FastAPI
-- **Parsing**: PyYAML (for YAML/JSON)
-- **Templates**: Jinja2
-- **Frontend**: HTML5, CSS3 (no frameworks)
-- **Testing**: pytest
-- **Deployment**: Docker
+Configuration lives in `app/config.py` and is read from environment variables where applicable. Notable values include:
+
+- `SITE_URL`: used for sitemap and structured metadata.
+- `ADSENSE_PUBLISHER_ID`: used for `ads.txt`.
+- `DEBUG`: optional boolean-style runtime flag.
 
 ## Testing
 
-Run the test suite:
+Run the full test suite:
 
 ```bash
 pytest tests/ -v
 ```
 
-Tests cover:
-- Removed endpoint detection
-- Added required field detection
-- Type change detection
-- Summary count accuracy
-- Error handling for invalid specs
+The tests cover:
 
-## Limitations & Known Constraints
+- Parser validation.
+- Swagger 2.0 normalization.
+- OpenAPI 3.1 fixtures and component-only specs.
+- Core diff categories.
+- Schema utilities.
+- URL fetch safeguards.
+- Result presentation grouping.
+- Template result behavior.
 
-1. **No Database**: Results are not persisted. This is designed for immediate comparisons only.
-2. **Simple Type Comparison**: Parameter/field type changes are detected at a basic level (comparing type strings).
-3. **No Schema References**: `$ref` in JSON schemas are not deep-resolved. Referenced definitions are not compared.
-4. **No Enum/Default Validation**: Detailed enum and default value changes require the schema to explicitly define these fields.
-5. **No Semantic Validation**: Does not validate semantic correctness, only structural changes.
-6. **No Authentication**: Public endpoint with no access control.
+## Health Check
 
-## Roadmap
+```bash
+curl http://localhost:8000/health
+```
 
-- [ ] Support JSON Schema `$ref` resolution
-- [ ] Detailed enum and default value tracking
-- [ ] OpenAPI 3.1 full support
-- [ ] Change history/comparison artifacts storage (optional DB)
-- [ ] Integration with CI/CD pipelines (CLI mode)
-- [ ] GraphQL schema support
-- [ ] Custom rules engine
-- [ ] Change impact analysis
+## Current Boundaries
 
-## Contributing
+- Results are not persisted.
+- The app validates basic spec shape, not full OpenAPI compliance.
+- The diff is structural and rule-based; it does not execute schema validators or test live API behavior.
+- URL fetching is capped at 2 MB and public HTTP/HTTPS only.
+- There is no built-in authentication.
+- Ambiguous compatibility questions are intentionally classified as risky.
 
-This is an MVP. Feedback welcome on:
-- Classification accuracy
-- UI/UX improvements
-- Performance optimizations
-- Additional change types
+## Documentation
+
+- [APPLICATION_MANUAL.md](APPLICATION_MANUAL.md): detailed explanation of input handling, comparison internals, and result rendering.
+- [EXAMPLES.md](EXAMPLES.md): sample specs and API request examples.
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues or questions:
-1. Check limitations section above
-2. Review test cases for expected behavior
-3. Ensure specs are valid OpenAPI v3 or Swagger v2
-
----
-
-Built with ❤️ as a production-ready MVP. Keep it simple, keep it fast.
+MIT License.
