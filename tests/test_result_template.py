@@ -118,3 +118,43 @@ def test_result_template_sorts_rendered_groups_and_rows_by_severity():
     assert "sortChangesBySeverity(group.changes)" in template
     assert "function severityRank(type)" in template
     assert "breaking: 0, potentially_breaking: 1, non_breaking: 2" in template
+
+
+def test_result_template_offers_downloadable_report_formats():
+    """The final report should be downloadable from the result summary."""
+    template = TEMPLATE.read_text()
+
+    assert "Download report" in template
+    assert 'data-download-format="markdown"' in template
+    assert 'data-download-format="json"' in template
+    assert 'data-download-format="pdf"' in template
+    assert "handleReportDownload(button.getAttribute('data-download-format'), result, report)" in template
+    assert "buildMarkdownReport(result, report)" in template
+    assert "buildDownloadableReport(result, report)" in template
+    assert "downloadReportFile(" in template
+    assert "window.print()" in template
+
+
+def test_result_template_markdown_report_contains_summary_and_grouped_changes():
+    """Markdown exports should preserve the visible report structure."""
+    template = TEMPLATE.read_text()
+
+    assert "# SpecDrift API Change Report" in template
+    assert "## Summary" in template
+    assert "## Changes" in template
+    assert "Generated:" in template
+    assert "Surface:" in template
+    assert "Counts:" in template
+    assert "Spec path:" in template
+
+
+def test_result_css_styles_download_menu_and_print_report():
+    """Download controls should match the repaint UI and support PDF printing."""
+    css = REPAINT_CSS.read_text()
+
+    assert ".result-report-actions" in css
+    assert ".result-download-menu" in css
+    assert ".result-download-menu button:hover" in css
+    assert "@media print" in css
+    assert ".result-report-actions," in css
+    assert "break-inside: avoid;" in css

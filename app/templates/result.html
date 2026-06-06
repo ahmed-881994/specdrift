@@ -87,7 +87,17 @@
             <div class="summary repaint-result-summary">
                 <div class="summary-header">
                     <h2>Comparison Results</h2>
-                    <button id="showAll" class="repaint-mini-button show-all-button" hidden>Show All</button>
+                    <div class="result-report-actions">
+                        <button id="downloadReportToggle" class="repaint-mini-button result-download-button" type="button" aria-expanded="false" aria-controls="downloadReportMenu">
+                            Download report
+                        </button>
+                        <div id="downloadReportMenu" class="result-download-menu" hidden>
+                            <button type="button" data-download-format="markdown">Markdown</button>
+                            <button type="button" data-download-format="json">JSON</button>
+                            <button type="button" data-download-format="pdf">PDF</button>
+                        </div>
+                        <button id="showAll" class="repaint-mini-button show-all-button" hidden>Show All</button>
+                    </div>
                 </div>
         `;
 
@@ -139,6 +149,8 @@
 
         const filterButtons = document.querySelectorAll('[data-filter-kind]');
         const showAllBtn = document.getElementById('showAll');
+        const downloadToggle = document.getElementById('downloadReportToggle');
+        const downloadMenu = document.getElementById('downloadReportMenu');
 
         filterButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -157,6 +169,142 @@
                 applyFilters(filters);
             });
         }
+
+        if (downloadToggle && downloadMenu) {
+            downloadToggle.addEventListener('click', () => {
+                const isOpen = downloadMenu.hidden;
+                downloadMenu.hidden = !isOpen;
+                downloadToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+
+            downloadMenu.querySelectorAll('[data-download-format]').forEach(button => {
+                button.addEventListener('click', () => {
+                    downloadMenu.hidden = true;
+                    downloadToggle.setAttribute('aria-expanded', 'false');
+                    handleReportDownload(button.getAttribute('data-download-format'), result, report);
+                });
+            });
+
+            document.addEventListener('click', event => {
+                if (!downloadMenu.hidden && !event.target.closest('.result-report-actions')) {
+                    downloadMenu.hidden = true;
+                    downloadToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+    }
+
+    function handleReportDownload(format, result, report) {
+        if (format === 'pdf') {
+            window.print();
+            return;
+        }
+
+        const filename = `specdrift-report-${reportTimestampSlug()}.${format === 'json' ? 'json' : 'md'}`;
+        if (format === 'json') {
+            downloadReportFile(
+                filename,
+                JSON.stringify(buildDownloadableReport(result, report), null, 2),
+                'application/json'
+            );
+            return;
+        }
+
+        downloadReportFile(filename, buildMarkdownReport(result, report), 'text/markdown');
+    }
+
+    function buildDownloadableReport(result, report) {
+        return {
+            generated_at: new Date().toISOString(),
+            tool: 'SpecDrift',
+            versions: {
+                old: result.old_version || null,
+                new: result.new_version || null
+            },
+            summary: result.summary || {},
+            report,
+            changes: result.changes || []
+        };
+    }
+
+    function buildMarkdownReport(result, report) {
+        const summary = result.summary || {};
+        const lines = [
+            '# SpecDrift API Change Report',
+            '',
+            `Generated: ${new Date().toISOString()}`,
+            ''
+        ];
+
+        if (result.old_version || result.new_version) {
+            lines.push(`Comparing: ${markdownValue(result.old_version || 'Unknown')} -> ${markdownValue(result.new_version || 'Unknown')}`, '');
+        }
+
+        lines.push(
+            '## Summary',
+            '',
+            `- Breaking: ${summary.breaking || 0}`,
+            `- Risky: ${summary.potentially_breaking || 0}`,
+            `- Safe: ${summary.non_breaking || 0}`,
+            `- Total changes: ${(result.changes || []).length}`,
+            ''
+        );
+
+        const groups = sortGroupsBySeverity(report.groups || []);
+        if (groups.length === 0) {
+            lines.push('## Changes', '', 'No changes detected.', '');
+            return lines.join('\n');
+        }
+
+        lines.push('## Changes', '');
+        for (const group of groups) {
+            lines.push(
+                `### ${markdownValue(group.title)}`,
+                '',
+                `Surface: ${markdownValue(group.surface_label || formatLabel(group.surface))}`,
+                `Counts: ${group.counts.breaking || 0} breaking, ${group.counts.potentially_breaking || 0} risky, ${group.counts.non_breaking || 0} safe`,
+                ''
+            );
+
+            for (const change of sortChangesBySeverity(group.changes || [])) {
+                lines.push(`- ${markdownValue(formatImpact(change.type))}: ${markdownValue(change.message)}`);
+                if (change.method || change.path) {
+                    lines.push(`  - Operation: ${markdownValue([change.method, change.path].filter(Boolean).join(' '))}`);
+                }
+                if (change.field_name) {
+                    lines.push(`  - Field: ${markdownValue(change.field_name)}`);
+                }
+                if (change.category) {
+                    lines.push(`  - Category: ${markdownValue(filterLabel('category', change.category))}`);
+                }
+                if (change.details && change.details.schema_path) {
+                    lines.push(`  - Spec path: ${markdownValue(change.details.schema_path)}`);
+                }
+            }
+
+            lines.push('');
+        }
+
+        return lines.join('\n');
+    }
+
+    function downloadReportFile(filename, content, mimeType) {
+        const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+
+    function reportTimestampSlug() {
+        return new Date().toISOString().replace(/[:.]/g, '-');
+    }
+
+    function markdownValue(value) {
+        return String(value ?? '').replace(/\r?\n/g, ' ').trim();
     }
 
     function normalizeReport(result) {
