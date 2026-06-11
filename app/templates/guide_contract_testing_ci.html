@@ -1,11 +1,43 @@
 {% extends "layout.html" %}
 
 {% block title %}API Contract Testing in CI with OpenAPI Spec Diffs{% endblock %}
-{% block meta_description %}Learn how to add OpenAPI contract comparison to CI/CD so pull requests reveal breaking API changes before deployment.{% endblock %}
+{% block meta_description %}Learn how to add OpenAPI contract comparison to CI/CD so pull requests reveal breaking API changes before deployment, including PR checks for API contract changes.{% endblock %}
 {% block og_title %}API Contract Testing in CI with OpenAPI Specs{% endblock %}
-{% block og_description %}Turn OpenAPI spec comparison into a practical release gate for API teams.{% endblock %}
+{% block og_description %}Turn OpenAPI spec comparison into a practical release gate for API teams and pull requests.{% endblock %}
 
 {% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "How do PR checks for API contract changes work?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A pull request compares the new OpenAPI contract against the baseline contract, then fails or warns when breaking or risky changes are detected."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Should contract tests fail on every change?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Most teams fail only on confirmed breaking changes and let safe or additive changes pass."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How can I prevent breaking API changes with contract tests?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Compare the old and new specs in CI, review the affected endpoints and schemas, and require approval or versioning for breaking changes."
+            }
+        }
+    ]
+}
+</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -118,6 +150,12 @@
     <p>
         You do not need a perfect governance process to begin. Start by running comparisons in warning mode. Once the
         team trusts the signal, fail builds for confirmed breaking changes and require a documented exception path.
+    </p>
+
+    <h3>Useful Query Variants</h3>
+    <p>
+        This guide is meant to answer searches like PR checks for API contract changes, API contract testing CI CD,
+        and prevent breaking API changes with contract tests.
     </p>
 
     <p><a class="cta" href="/upload">Try a contract comparison</a></p>

@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 
-{% block title %}OpenAPI Breaking Changes: Examples, Checklist, and Detection Guide{% endblock %}
-{% block meta_description %}Learn which OpenAPI changes break API clients, with examples covering endpoints, parameters, schemas, responses, enums, and authentication.{% endblock %}
-{% block og_title %}OpenAPI Breaking Changes: Examples and Checklist{% endblock %}
-{% block og_description %}Understand which OpenAPI changes can break existing API clients and how to review them safely.{% endblock %}
+{% block title %}Breaking Changes Detection for OpenAPI and Swagger APIs{% endblock %}
+{% block meta_description %}Learn how breaking changes detection works for OpenAPI and Swagger APIs, with examples covering endpoints, parameters, schemas, responses, enums, and authentication.{% endblock %}
+{% block og_title %}Breaking Changes Detection for OpenAPI and Swagger APIs{% endblock %}
+{% block og_description %}Understand which OpenAPI and Swagger changes can break existing API clients and how to review them safely.{% endblock %}
 
 {% block structured_data %}
 <script type="application/ld+json">
@@ -23,6 +23,30 @@
     "name": "SpecDrift"
   },
   "mainEntityOfPage": "{{ site_url }}/guides/openapi-breaking-changes"
+}
+</script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "What counts as a breaking API change?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "A breaking API change is any change that can make an existing client fail without changing its code, such as removing a path, adding a required field, or changing a response type."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How do I detect breaking API changes before release?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Compare the old and new OpenAPI or Swagger documents, classify the impacted operations, and review any change that removes behavior or makes validation stricter."
+            }
+        }
+    ]
 }
 </script>
 <script type="application/ld+json">
@@ -139,6 +163,12 @@
         <li>Deprecate before removing whenever client adoption is unknown.</li>
         <li>Run compatibility checks in CI so risky changes are visible in pull requests.</li>
     </ul>
+
+    <h3>Search Intent Coverage</h3>
+    <p>
+        This guide targets breaking changes detection, API breaking change detection, and API compatibility searches
+        that need a clear review checklist rather than a plain-text diff.
+    </p>
 
     <p><a class="cta" href="/upload">Compare your OpenAPI specs</a></p>
 

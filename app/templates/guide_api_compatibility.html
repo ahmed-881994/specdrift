@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+
+{% block title %}API Compatibility Guide for Breaking Changes and Contract Testing{% endblock %}
+{% block meta_description %}Learn how to check API compatibility, detect breaking changes, and prevent contract regressions with practical review steps and CI checks.{% endblock %}
+{% block og_title %}API Compatibility Guide for Breaking Changes{% endblock %}
+{% block og_description %}Practical guidance for API compatibility review, breaking change detection, and contract testing in CI.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "API Compatibility Guide for Breaking Changes and Contract Testing",
+  "description": "Learn how to check API compatibility, detect breaking changes, and prevent contract regressions with practical review steps and CI checks.",
+  "datePublished": "2026-06-11",
+  "dateModified": "2026-06-11",
+  "author": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "SpecDrift"
+  },
+  "mainEntityOfPage": "{{ site_url }}/guides/api-compatibility"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is API compatibility?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "API compatibility is whether an existing client can keep working after an API change without code changes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I detect breaking API changes?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Compare the old and new API contract, review paths, methods, parameters, request bodies, responses, and schemas, then flag anything that makes existing clients fail."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How can I prevent breaking API changes with contract tests?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Run OpenAPI comparisons in CI, fail pull requests on unapproved breaking changes, and require versioning or migration notes before release."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="content-section article">
+    <p class="article-kicker">IDX 06 / Compatibility review</p>
+    <h1>API Compatibility Guide</h1>
+    <p>
+        API compatibility is the practical question behind breaking changes detection: will the old client still work
+        after the new version ships? That answer depends on the contract, not just the implementation, so compatibility
+        review should focus on the documented API surface.
+    </p>
+
+    <h3>What to Check First</h3>
+    <ul>
+        <li>Paths and methods that were removed or renamed.</li>
+        <li>Required request parameters, request bodies, and schema fields that were added.</li>
+        <li>Response fields, status codes, and media types that changed.</li>
+        <li>Security requirements, scopes, or header names that became stricter.</li>
+    </ul>
+
+    <h3>Compatible vs Incompatible Changes</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Change type</th>
+                <th>Compatibility risk</th>
+                <th>Typical action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>New optional field</td>
+                <td>Low</td>
+                <td>Ship normally and document it if needed.</td>
+            </tr>
+            <tr>
+                <td>New required field</td>
+                <td>High</td>
+                <td>Version, deprecate, or provide a migration window.</td>
+            </tr>
+            <tr>
+                <td>Removed response field</td>
+                <td>High</td>
+                <td>Check generated clients and strict parsers before release.</td>
+            </tr>
+            <tr>
+                <td>Added enum value</td>
+                <td>Medium</td>
+                <td>Review exhaustive clients and validation logic.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>How to Use Contract Testing</h3>
+    <p>
+        The most reliable way to prevent breaking API changes is to compare the published contract in pull requests and
+        block the release if the diff includes confirmed incompatible changes. That is usually enough to catch most API
+        breaking change detection issues before they reach users.
+    </p>
+
+    <h3>Release Checklist</h3>
+    <ol>
+        <li>Compare the previous and proposed API contracts.</li>
+        <li>Classify changes as breaking, risky, or safe.</li>
+        <li>Document the client impact for anything non-trivial.</li>
+        <li>Add contract tests or CI checks for repeatable enforcement.</li>
+    </ol>
+
+    <p><a class="cta" href="/upload">Compare API specs now</a></p>
+
+    <nav class="related-guides" aria-label="Related guides">
+        <h2>Related Guides</h2>
+        <a href="/guides/openapi-breaking-changes">OpenAPI Breaking Changes</a>
+        <a href="/guides/swagger-vs-openapi-compatibility">Swagger vs OpenAPI Compatibility</a>
+        <a href="/guides/api-contract-testing-ci">API Contract Testing in CI</a>
+        <a href="/guides/how-specdrift-works">How SpecDrift Works</a>
+    </nav>
+</article>
+{% endblock %}

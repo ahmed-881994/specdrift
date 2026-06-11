@@ -109,6 +109,12 @@ async def swagger_vs_openapi_compatibility(request: Request):
     return templates.TemplateResponse("guide_swagger_openapi.html", {"request": request, "enable_ads": False})
 
 
+@app.get("/guides/api-compatibility", response_class=HTMLResponse)
+async def api_compatibility(request: Request):
+    """Render the API compatibility guide."""
+    return templates.TemplateResponse("guide_api_compatibility.html", {"request": request, "enable_ads": False})
+
+
 @app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
 async def robots_txt():
     """Expose crawler instructions."""
@@ -144,6 +150,7 @@ async def sitemap_xml():
         ("/guides/api-versioning-checklist", "monthly", "0.8"),
         ("/guides/api-contract-testing-ci", "monthly", "0.8"),
         ("/guides/swagger-vs-openapi-compatibility", "monthly", "0.8"),
+        ("/guides/api-compatibility", "monthly", "0.8"),
         ("/about", "monthly", "0.6"),
         ("/privacy", "yearly", "0.4"),
         ("/terms", "yearly", "0.4"),

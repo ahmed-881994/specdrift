@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 
-{% block title %}Compare Swagger and OpenAPI Specs for Breaking Changes{% endblock %}
-{% block meta_description %}Upload, paste, or fetch two Swagger or OpenAPI specs to detect breaking API changes, risky schema updates, and safe contract differences.{% endblock %}
-{% block og_title %}Compare Swagger and OpenAPI Specs{% endblock %}
+{% block title %}Compare Swagger Files Online for Breaking Changes | SpecDrift{% endblock %}
+{% block meta_description %}Compare Swagger files online or upload OpenAPI specs to detect breaking API changes, risky schema updates, and safe contract differences.{% endblock %}
+{% block og_title %}Compare Swagger Files Online{% endblock %}
 {% block og_description %}Upload or paste two Swagger / OpenAPI specifications and instantly spot breaking differences.{% endblock %}
-{% block twitter_title %}Compare Swagger and OpenAPI Specs{% endblock %}
+{% block twitter_title %}Compare Swagger Files Online{% endblock %}
 {% block twitter_description %}Detect API contract drift by comparing two Swagger / OpenAPI files in seconds.{% endblock %}
 
 {% block structured_data %}
@@ -42,11 +42,14 @@
             <strong>compare</strong>
             <em><span aria-hidden="true"></span>Ready</em>
         </div>
-        <h1>Compare two API specifications.</h1>
+        <h1>Compare Swagger files online.</h1>
         <p>
             Drop in two Swagger 2.0 or OpenAPI 3.x documents, JSON or YAML. SpecDrift parses semantics,
             not text, and classifies every difference as <span class="tone-del">breaking</span>,
             <span class="tone-warn">risky</span>, or <span class="tone-add">safe</span>.
+        </p>
+        <p>
+            Use it as a Swagger compare tool, an OpenAPI diff checker, or a PR gate for API contract changes.
         </p>
         <div class="repaint-step-grid" aria-label="Comparison steps">
             <article class="repaint-step-card repaint-brackets">
@@ -202,9 +205,44 @@
 </section>
 
 <section class="repaint-band repaint-band--muted">
-    <div class="repaint-section-inner repaint-tips">
+    <div class="repaint-section-inner">
         <div class="repaint-section-heading">
             <span>SEC 02 / 03</span>
+            <h2>Built for Swagger compare and OpenAPI diff searches.</h2>
+            <p>
+                If you want to compare Swagger files online, review OpenAPI 2.0 vs 3.x changes, or add PR checks for
+                API contract changes, the guides below cover the full workflow.
+            </p>
+        </div>
+        <div class="repaint-guide-list">
+            <a href="/guides/openapi-breaking-changes">
+                <span>IDX 01</span>
+                <strong>OpenAPI Breaking Changes</strong>
+                <small>Learn which changes are breaking, potentially breaking, or safe.</small>
+            </a>
+            <a href="/guides/swagger-vs-openapi-compatibility">
+                <span>IDX 02</span>
+                <strong>Swagger vs OpenAPI Compatibility</strong>
+                <small>Understand Swagger 2.0 vs OpenAPI 3.x terminology and structure.</small>
+            </a>
+            <a href="/guides/api-compatibility">
+                <span>IDX 03</span>
+                <strong>API Compatibility Guide</strong>
+                <small>See how to check backward compatibility and API breaking change detection.</small>
+            </a>
+            <a href="/guides/api-contract-testing-ci">
+                <span>IDX 04</span>
+                <strong>API Contract Testing in CI</strong>
+                <small>Turn contract diffs into pull request checks and deployment gates.</small>
+            </a>
+        </div>
+    </div>
+</section>
+
+<section class="repaint-band repaint-band--muted">
+    <div class="repaint-section-inner repaint-tips">
+        <div class="repaint-section-heading">
+            <span>SEC 03 / 03</span>
             <h2>What the engine detects</h2>
         </div>
         <div class="repaint-card-grid">
